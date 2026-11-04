@@ -43,8 +43,8 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <label>点数 / decade</label><input id="ppd" type="number" value="50">
 <label>実測バンプ範囲 下限 <span class="unit">kHz</span></label><input id="bumpLo" type="number" value="700">
 <label>実測バンプ範囲 上限 <span class="unit">kHz</span></label><input id="bumpHi" type="number" value="800">
-<label>目標fc（0なら未設定） <span class="unit">kHz</span></label><input id="fcTarget" type="number" min="0" step="any" value="0">
-</div><p class="note">周波数範囲内を対数間隔で計算します。点数は 20〜200 points/decade に制限。fcの目標は、抑えたい周波数ノイズ帯域とアクチュエータ・遅延の制約から設定してください。700〜800 kHzのサーボバンプをそのまま目標fcにする意味ではありません。</p></section>
+<label>目標fc（0なら未設定） <span class="unit">kHz</span></label><input id="fcTarget" type="number" min="0" step="any" value="500">
+</div><p class="note">周波数範囲内を対数間隔で計算します。点数は 20〜200 points/decade に制限。目標fc=500 kHzは、実測バンプ700〜800 kHzより低い暫定開始値です。最終値は実測のノイズ抑圧帯域とPM・GMで決定してください。</p></section>
 </div>
 <div class="actions"><button id="calc">再計算</button><button class="secondary" id="reset">初期値に戻す</button></div>
 <div class="metric-grid">
@@ -52,10 +52,10 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <div class="metric"><span>Phase margin PM</span><small class="guide">目安：45〜60°。30°未満は振動・リンギングに注意。60°超は安定余裕が大きいが応答速度も確認。</small><div class="judge" id="pmJudge">—</div><strong id="pm">—</strong></div>
 <div class="metric"><span>Phase crossover fpc</span><small class="guide">目安：fpc自体に固定値なし。この周波数でGMが6 dB以上、できれば10 dB以上あるかを確認。</small><div class="judge" id="fpcJudge">—</div><strong id="fpc">—</strong></div>
 <div class="metric"><span>Gain margin GM</span><small class="guide">目安：6 dB以上、できれば10 dB以上。小さいほどゲイン変動で不安定になりやすい。</small><div class="judge" id="gmJudge">—</div><strong id="gm">—</strong></div>
-<div class="metric"><span>感度関数 |S| の最大値</span><small class="guide">目安：最大値 Ms が1.5以下（約3.5 dB）なら良好、2以下（約6 dB）を一般的な上限目安にする。</small><div class="judge" id="speakJudge">—</div><strong id="speak">—</strong></div>
-<div class="metric"><span>相補感度 |T| の最大値</span><small class="guide">目安：ピークは小さいほどよい。1.5以下（約3.5 dB）を目安、2超（約6 dB超）は強い共振・サーボバンプを疑う。</small><div class="judge" id="tpeakJudge">—</div><strong id="tpeak">—</strong></div>
-<div class="metric"><span>実測帯域内 |S| 最大</span><small class="guide">目安：|S|の最大値と同じ基準。実測帯域で6 dBを超えるなら、その帯域の外乱抑圧が弱い可能性。</small><div class="judge" id="sbandJudge">—</div><strong id="sband">—</strong></div>
-<div class="metric"><span>実測帯域内 |T| 最大</span><small class="guide">目安：|T|の最大値と同じ基準。実測ピークの周波数・高さと照合し、測定点に応じて解釈する。</small><div class="judge" id="tbandJudge">—</div><strong id="tband">—</strong></div>
+<div class="metric"><span>感度関数 |S| の最大値</span><small class="guide">目安：Ms= max|S|。1.5以下（+3.52 dB以下）を良好の目標、2以下（+6.02 dB以下）を許容の目安とする。</small><div class="judge" id="speakJudge">—</div><strong id="speak">—</strong></div>
+<div class="metric"><span>相補感度 |T| の最大値</span><small class="guide">目安：Mt=max|T|。1.25以下（+1.94 dB以下）がより厳しい目標、1.5以下（+3.52 dB以下）を実用上の目安とする。</small><div class="judge" id="tpeakJudge">—</div><strong id="tpeak">—</strong></div>
+<div class="metric"><span>実測帯域内 |S| 最大</span><small class="guide">表示は「ピーク周波数 Hz」と「M値（線形倍率・dB）」。Mが1未満なら外乱を抑圧、1超なら増幅。</small><div class="judge" id="sbandJudge">—</div><strong id="sband">—</strong></div>
+<div class="metric"><span>実測帯域内 |T| 最大</span><small class="guide">表示は「ピーク周波数 Hz」と「M値（線形倍率・dB）」。M値を1.25〜1.5の目安と比較し、測定点に応じて解釈。</small><div class="judge" id="tbandJudge">—</div><strong id="tband">—</strong></div>
 </div>
 <div class="plotgrid">
 <section><div class="plot-title">Open-loop gain |L(jω)| [dB]</div><canvas id="gain"></canvas></section>
@@ -69,6 +69,14 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <section><div class="plot-title">Step 3：相補感度 |T| = |L/(1+L)| [dB]</div><canvas id="complementary"></canvas></section>
 </div>
 <section style="margin-top:15px"><h2>伝達関数モデルと交差周波数</h2><pre id="equations"></pre><p class="note warning">Fast/Slow Loop Filterの合成モデルは従来の仮定を維持しています。今回の図A-1.1だけでは、このFast/Slowブロックとの接続関係は確定できていません。IC1モデルの追加だけでLock circuit全体が確定したわけではありません。</p><p class="note">IC2・IC3は、図面の10 kΩ/10 kΩの反転増幅段として理想化すると各段のゲインは−1、2段の積は+1（振幅1）です。R5=51 Ωは後段負荷が十分高インピーダンスなら省略可能としています。S=1/(1+L) は感度、T=L/(1+L) は相補感度です。どちらが測定されたバンプに対応するかは測定点とノイズ注入位置によります。</p><p class="note">G(s)=A/s、D(s)=e^(−sτ) の仮定は従来どおりです。表示しているNyquistは正周波数側のみです。</p></section>
+<section style="margin-top:15px"><h2>実験・モデル照合の進め方（調整手順）</h2>
+<div class="grid">
+<section><h2>① まずロックの帯域を確認</h2><p>見る指標：<b>fc</b></p><p>ループフィルターのゲインを少しずつ調整し、どこまで速い周波数変動を抑えられるか確認する。ロック時・非ロック時の周波数ノイズPSDを比較し、抑圧が失われ始める周波数とモデルのfcを照合する。</p><p class="note">今回の暫定目標：fc ≈ 500 kHz。700〜800 kHzのサーボバンプより少し低い開始目標であり、実測で確定したUGFではない。</p></section>
+<section><h2>② 安定性を確認</h2><p>見る指標：<b>PM・GM</b></p><p>帯域を広げた結果、発振しやすくなっていないかを確認する。PMは45〜60°を目標、30°未満は要注意。GMは6 dB以上、できれば10 dB以上を確保する。条件を満たさなければfcを上げず、ゲインや位相補償を見直す。</p></section>
+<section><h2>③ サーボバンプの原因を探す</h2><p>見る指標：<b>|S|・|T|</b></p><p>700〜800 kHz付近で、外乱抑圧が弱くなっているのか（|S|）、閉ループ応答が盛り上がっているのか（|T|）を調べる。実測スペクトルの測定点・ノイズ注入点に応じて、対応する伝達関数を比較する。</p><p class="note">M値は線形倍率。1.5は+3.52 dB、2は+6.02 dBに相当。ピーク周波数（Hz）そのものを1.5と比較しない。</p></section>
+</div>
+<p class="note warning">重要：サーボバンプのピーク周波数はUGFと同一とは限らず、一般にUGFより上側に現れることがある。まずfcを仮置きし、開ループ測定またはロック/非ロックPSDとの比較で更新する。現在の回路モデルは暫定部分を含むため、計算結果だけで実機の安定性を断定しない。</p>
+</section>
 <p class="note">計算はすべてブラウザ内で実行されます。入力値の外部送信・データベース保存・アクセス解析は行いません。</p>
 </main>
 <script>
@@ -154,10 +162,11 @@ function calculate(){
  const bandLo=v.bumpLo*1e3,bandHi=v.bumpHi*1e3;
  function bandMaximum(values){let best=null;for(let i=0;i<f.length;i++)if(f[i]>=bandLo&&f[i]<=bandHi&&(!best||values[i]>best.db))best={f:f[i],db:values[i]};return best;}
  const sBand=bandMaximum(sDb),tBand=bandMaximum(tDb);
- $('speak').textContent=sPeak?fmt(sPeak.f,'Hz')+' / '+sPeak.db.toFixed(2)+' dB':'計算不可';
- $('tpeak').textContent=tPeak?fmt(tPeak.f,'Hz')+' / '+tPeak.db.toFixed(2)+' dB':'計算不可';
- $('sband').textContent=sBand?fmt(sBand.f,'Hz')+' / '+sBand.db.toFixed(2)+' dB':'範囲外';
- $('tband').textContent=tBand?fmt(tBand.f,'Hz')+' / '+tBand.db.toFixed(2)+' dB':'範囲外';
+ function peakText(p){if(!p)return '計算不可';const m=Math.pow(10,p.db/20);return fmt(p.f,'Hz')+' / M='+m.toFixed(2)+' ('+p.db.toFixed(2)+' dB)';}
+ $('speak').textContent=peakText(sPeak);
+ $('tpeak').textContent=peakText(tPeak);
+ $('sband').textContent=sBand?peakText(sBand):'範囲外';
+ $('tband').textContent=tBand?peakText(tBand):'範囲外';
  for(let k=-60;k<=60;k++){const target=-180+360*k;interpolateCross(f,phase,target).forEach(fpc=>phaseCrossEvents.push({fpc,target}));}
  phaseCrossEvents.sort((a,b)=>a.fpc-b.fpc);
  const pms=gainCross.map(fc=>{const phaseAt=interpAtLog(f,phase,fc),target=-180+360*Math.round((phaseAt+180)/360);return{fc,phaseAt,target,pm:phaseAt-target};});
