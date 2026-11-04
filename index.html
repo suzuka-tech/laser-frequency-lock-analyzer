@@ -157,7 +157,7 @@ function calculate(){
  function evaluate(w){
  const Zc=[0,-1/(w*Cf)],Zbranch=add(Zc,[Rg,0]);
  const Ybranch=div([1,0],Zbranch),Zeq=div([1,0],add([1/R2,0],Ybranch));
- const Ff=mul(div(Zeq,add([Rf,0],Zeq)),div([R2,0],add(Zc,[R2,0])));
+ const Ff=mul(div(Zeq,add([Rf,0],Zeq)),div([Rg,0],add(Zc,[Rg,0])));
  const ZA=[Rf*R2/(Rf+R2),0],Zload=add(Zc,ZA),Fs=div(Zload,add([Rg,0],Zload));
  const Zfb=[v.pir2,-1/(w*Cpi)];let Yin=[1/Rpi,0];
  if(piModel==='ic1'){const q=w*Raux*Caux,qd=1+q*q;const Yaux=[(w*w*Raux*Caux*Caux)/qd,(w*Caux)/qd];Yin=add(Yin,Yaux);}
