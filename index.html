@@ -38,6 +38,7 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <label>RG <span class="unit">Ω</span></label><input id="lfrg" type="number" step="any" value="1000">
 </div></section>
 <section><h2>④ 計算範囲</h2><div class="fields">
+<label>基準ビート周波数 <span class="unit">MHz</span></label><input id="beatCarrier" type="number" value="30" step="any">
 <label>開始周波数 <span class="unit">Hz</span></label><input id="fmin" type="number" value="10">
 <label>終了周波数 <span class="unit">Hz</span></label><input id="fmax" type="number" value="100000000">
 <label>点数 / decade</label><input id="ppd" type="number" value="50">
@@ -46,6 +47,7 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <label>目標fc（0なら未設定） <span class="unit">kHz</span></label><input id="fcTarget" type="number" min="0" step="any" value="500">
 </div><p class="note">周波数範囲内を対数間隔で計算します。点数は 20〜200 points/decade に制限。目標fc=500 kHzは、実測バンプ700〜800 kHzより低い暫定開始値です。最終値は実測のノイズ抑圧帯域とPM・GMで決定してください。</p></section>
 </div>
+<p class="note warning">周波数軸 f は30 MHzのビート周波数そのものではなく、30 MHzにロックした状態の周りに重なる周波数変動・変調の速さ（Fourier周波数）です。例：f=750 kHzは「30 MHzでロックしている信号に対する750 kHzの揺らぎ」を表し、ロック目標が750 kHzという意味ではありません。</p>
 <div class="actions"><button id="calc">再計算</button><button class="secondary" id="reset">初期値に戻す</button></div>
 <div class="metric-grid">
 <div class="metric"><span>Gain crossover fc</span><small class="guide">目安：抑えたい周波数ノイズ帯域より高く設定。ただし遅延・位相余裕が上限を決める。バンプ周波数と同一視しない。</small><div class="judge" id="fcJudge">目標未設定</div><strong id="fc">—</strong></div>
@@ -58,15 +60,15 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <div class="metric"><span>実測帯域内 |T| 最大</span><small class="guide">表示は「ピーク周波数 Hz」と「M値（線形倍率・dB）」。M値を1.25〜1.5の目安と比較し、測定点に応じて解釈。</small><div class="judge" id="tbandJudge">—</div><strong id="tband">—</strong></div>
 </div>
 <div class="plotgrid">
-<section><div class="plot-title">Open-loop gain |L(jω)| [dB]</div><canvas id="gain"></canvas></section>
+<section><div class="plot-title">Open-loop gain |L(jω)| [dB]（横軸：30 MHzロック点周りの変動周波数）</div><canvas id="gain"></canvas></section>
 <section><div class="plot-title">Open-loop phase ∠L(jω) [deg]（unwrap）</div><canvas id="phase"></canvas></section>
 <section><div class="plot-title">Delay magnitude |D| [dB] vs ωτ</div><canvas id="delaymag"></canvas></section>
 <section><div class="plot-title">Delay phase ∠D(jω) [deg] vs ωτ</div><canvas id="delayphase"></canvas></section>
 <section><div class="plot-title">Phase of G(s) vs ωτ</div><canvas id="plantphase"></canvas></section>
 <section><div class="plot-title">Nyquist: Re L vs Im L（−1点付近の拡大）</div><canvas id="nyquist"></canvas></section>
 <section><div class="plot-title">Nyquist: Re L vs Im L（原点付近の拡大）</div><canvas id="nyquistorigin"></canvas></section><section><div class="plot-title">Nyquist: Re L vs Im L（全体スケール）</div><canvas id="nyquistfull"></canvas></section>
-<section><div class="plot-title">Step 3：閉ループ感度 |S| = |1/(1+L)| [dB]</div><canvas id="sensitivity"></canvas></section>
-<section><div class="plot-title">Step 3：相補感度 |T| = |L/(1+L)| [dB]</div><canvas id="complementary"></canvas></section>
+<section><div class="plot-title">Step 3：閉ループ感度 |S| [dB]（30 MHzロック点周りの変動周波数）</div><canvas id="sensitivity"></canvas></section>
+<section><div class="plot-title">Step 3：相補感度 |T| [dB]（30 MHzロック点周りの変動周波数）</div><canvas id="complementary"></canvas></section>
 </div>
 <section style="margin-top:15px"><h2>伝達関数モデルと交差周波数</h2><pre id="equations"></pre><p class="note warning">Fast/Slow Loop Filterの合成モデルは従来の仮定を維持しています。今回の図A-1.1だけでは、このFast/Slowブロックとの接続関係は確定できていません。IC1モデルの追加だけでLock circuit全体が確定したわけではありません。</p><p class="note">IC2・IC3は、図面の10 kΩ/10 kΩの反転増幅段として理想化すると各段のゲインは−1、2段の積は+1（振幅1）です。R5=51 Ωは後段負荷が十分高インピーダンスなら省略可能としています。S=1/(1+L) は感度、T=L/(1+L) は相補感度です。どちらが測定されたバンプに対応するかは測定点とノイズ注入位置によります。</p><p class="note">G(s)=A/s、D(s)=e^(−sτ) の仮定は従来どおりです。表示しているNyquistは正周波数側のみです。</p></section>
 <section style="margin-top:15px"><h2>実験・モデル照合の進め方（調整手順）</h2>
@@ -82,8 +84,8 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const ids=['kphi','kfm','rser','tau','pol','pir1','pir2','pic','ic1raux','ic1caux','lfr1','lfr2','lfc','lfrg','fmin','fmax','ppd','bumpLo','bumpHi','fcTarget'];
-const defaults={kphi:.0203718327,kfm:2.8e11,rser:280000,tau:28,pol:-1,pir1:4.7,pir2:100,pic:100,ic1raux:50,ic1caux:300,lfr1:.6,lfr2:4.8,lfc:100,lfrg:1000,fmin:10,fmax:1e8,ppd:50,bumpLo:700,bumpHi:800,fcTarget:500};
+const ids=['kphi','kfm','rser','tau','pol','pir1','pir2','pic','ic1raux','ic1caux','lfr1','lfr2','lfc','lfrg','fmin','fmax','ppd','bumpLo','bumpHi','fcTarget','beatCarrier'];
+const defaults={kphi:.0203718327,kfm:2.8e11,rser:280000,tau:28,pol:-1,pir1:4.7,pir2:100,pic:100,ic1raux:50,ic1caux:300,lfr1:.6,lfr2:4.8,lfc:100,lfrg:1000,fmin:10,fmax:1e8,ppd:50,bumpLo:700,bumpHi:800,fcTarget:500,beatCarrier:30};
 const add=(a,b)=>[a[0]+b[0],a[1]+b[1]],mul=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]],div=(a,b)=>{const d=b[0]*b[0]+b[1]*b[1];return[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d]},abs=a=>Math.hypot(a[0],a[1]),db=a=>20*Math.log10(Math.max(abs(a),1e-300)),deg=a=>Math.atan2(a[1],a[0])*180/Math.PI;
 function fmt(x,u){return Number.isFinite(x)?x.toLocaleString('ja-JP',{maximumFractionDigits:4})+' '+u:'範囲内に交差なし'}
 function interpolateCross(x,y,target){const found=[];for(let i=1;i<x.length;i++){const a=y[i-1]-target,b=y[i]-target;if(a===0)found.push(x[i-1]);else if(a*b<0){const t=(target-y[i-1])/(y[i]-y[i-1]);found.push(Math.exp(Math.log(x[i-1])+t*(Math.log(x[i])-Math.log(x[i-1]))));}}return found;}
@@ -143,7 +145,7 @@ function draw(id,x,y,opt={}){
 }
 function calculate(){
  const v={};ids.forEach(k=>v[k]=Number($(k).value));
- const positive=['kphi','kfm','rser','pir1','pic','ic1raux','ic1caux','lfr1','lfr2','lfc','lfrg','fmin','fmax'];if(positive.some(k=>!Number.isFinite(v[k])||v[k]<=0)||!Number.isFinite(v.pir2)||v.pir2<0||!Number.isFinite(v.tau)||v.tau<0||v.fmax<=v.fmin||!Number.isFinite(v.bumpLo)||!Number.isFinite(v.bumpHi)||v.bumpLo<=0||v.bumpHi<=v.bumpLo||!Number.isFinite(v.fcTarget)||v.fcTarget<0){alert('入力値を確認してください。容量・周波数・指定した抵抗は正の値、τとPIのR2は0以上にしてください。');return;}
+ const positive=['kphi','kfm','rser','pir1','pic','ic1raux','ic1caux','lfr1','lfr2','lfc','lfrg','fmin','fmax'];if(positive.some(k=>!Number.isFinite(v[k])||v[k]<=0)||!Number.isFinite(v.pir2)||v.pir2<0||!Number.isFinite(v.tau)||v.tau<0||v.fmax<=v.fmin||!Number.isFinite(v.bumpLo)||!Number.isFinite(v.bumpHi)||v.bumpLo<=0||v.bumpHi<=v.bumpLo||!Number.isFinite(v.fcTarget)||v.fcTarget<0||!Number.isFinite(v.beatCarrier)||v.beatCarrier<=0){alert('入力値を確認してください。容量・周波数・指定した抵抗は正の値、τとPIのR2は0以上にしてください。');return;}
  const tau=v.tau*1e-9,Rpi=v.pir1*1e3,Cpi=v.pic*1e-9,Raux=v.ic1raux*1e3,Caux=v.ic1caux*1e-12,Rf=v.lfr1*1e3,R2=v.lfr2,Cf=v.lfc*1e-9,Rg=v.lfrg,A=2*Math.PI*v.kfm*v.kphi/v.rser,piModel=$('piModel').value;
  const ppd=Math.max(20,Math.min(200,Math.round(v.ppd)||50)),N=Math.min(6000,Math.ceil(Math.log10(v.fmax/v.fmin)*ppd)+1);const f=[],warr=[],L=[],rawPhase=[];
  function evaluate(w){
@@ -217,7 +219,7 @@ function calculate(){
  draw('sensitivity',logf,sDb,{ylabel:'感度 |S| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:'#e5ad55',label:'0 dB'}],xLines:[{x:Math.log10(bandLo),color:'#ffbc6b',label:'実測帯域下限'},{x:Math.log10(bandHi),color:'#ffbc6b',label:'実測帯域上限',labelOffset:14}],markers:sBand?[{x:Math.log10(sBand.f),y:sBand.db,color:'#ffbc6b',shape:'diamond',label:'band max'}]:[]});
  draw('complementary',logf,tDb,{ylabel:'相補感度 |T| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:'#e5ad55',label:'0 dB'}],xLines:[{x:Math.log10(bandLo),color:'#ffbc6b',label:'実測帯域下限'},{x:Math.log10(bandHi),color:'#ffbc6b',label:'実測帯域上限',labelOffset:14}],markers:tBand?[{x:Math.log10(tBand.f),y:tBand.db,color:'#ffbc6b',shape:'diamond',label:'band max'}]:[]});
  const allPM=pms.length?pms.map(p=>`${p.fc.toPrecision(5)} Hz : ${p.pm.toFixed(3)}°`).join('\n'):'なし';const allGM=gms.length?gms.map(g=>`${g.fpc.toPrecision(5)} Hz : ${g.gm.toFixed(3)} dB`).join('\n'):'なし';
- $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nPI model: ${piModel==='ic1'?'Step 2: IC1 input RC included':'Step 1: basic PI'}\nZfb(s) = R2_PI + 1/(s C_PI)\nYin(s) = 1/R1_PI ${piModel==='ic1'?'+ s Caux/(1+s Raux Caux)':''}\nC_PI,eff(s) = −Zfb(s) Yin(s)\nR1_PI=${Rpi} Ω, R2_PI=${v.pir2} Ω, C_PI=${Cpi} F\nAux branch: Raux=${Raux} Ω, Caux=${Caux} F\n\nS(s)=1/(1+L(s)); T(s)=L(s)/(1+L(s))\nMeasured bump comparison band: ${bandLo}–${bandHi} Hz\nY_F(s) = 1/(R1_LF + 1/(s C_LF))\nF_F(s) = Y_F/(Y_F + 1/R2_LF + 1/RG)\nF_S(s) = (1/R2_LF)/(Y_F + 1/R2_LF + 1/RG)\nC_eq(s) = F_F(s) + F_S(s) C_PI,eff(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n表示中のマーカー：緑=PMが最小のゲイン交差点 fc、橙=GMが最小の位相交差点 fpc。\n\n※Loop Filterの接続は上記の仮定モデル。実回路図との照合が必要です。`;
+ $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nPI model: ${piModel==='ic1'?'Step 2: IC1 input RC included':'Step 1: basic PI'}\nZfb(s) = R2_PI + 1/(s C_PI)\nYin(s) = 1/R1_PI ${piModel==='ic1'?'+ s Caux/(1+s Raux Caux)':''}\nC_PI,eff(s) = −Zfb(s) Yin(s)\nR1_PI=${Rpi} Ω, R2_PI=${v.pir2} Ω, C_PI=${Cpi} F\nAux branch: Raux=${Raux} Ω, Caux=${Caux} F\n\nS(s)=1/(1+L(s)); T(s)=L(s)/(1+L(s))\nBeat carrier = ${v.beatCarrier} MHz (lock setpoint); plotted f is modulation/offset frequency around the lock point.\nMeasured bump comparison band: ${bandLo}–${bandHi} Hz\nY_F(s) = 1/(R1_LF + 1/(s C_LF))\nF_F(s) = Y_F/(Y_F + 1/R2_LF + 1/RG)\nF_S(s) = (1/R2_LF)/(Y_F + 1/R2_LF + 1/RG)\nC_eq(s) = F_F(s) + F_S(s) C_PI,eff(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n表示中のマーカー：緑=PMが最小のゲイン交差点 fc、橙=GMが最小の位相交差点 fpc。\n\n※Loop Filterの接続は上記の仮定モデル。実回路図との照合が必要です。`;
 }
 $('calc').addEventListener('click',calculate);$('reset').addEventListener('click',()=>{ids.forEach(k=>$(k).value=defaults[k]);calculate();});ids.forEach(k=>$(k).addEventListener('change',calculate));window.addEventListener('resize',()=>{if(window._resizeTimer)clearTimeout(window._resizeTimer);window._resizeTimer=setTimeout(calculate,120);});calculate();
 </script></body></html>
