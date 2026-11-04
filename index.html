@@ -9,7 +9,7 @@
 header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid var(--line)}h1{font-size:clamp(23px,3vw,32px);margin:0 0 5px}p{color:var(--muted);margin:5px 0}main{max-width:1240px;margin:auto;padding:22px 18px 60px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(275px,1fr));gap:14px}section,.metric{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px}h2{font-size:16px;margin:0 0 12px}.fields{display:grid;grid-template-columns:1fr 126px;gap:9px 10px;align-items:center}label{font-size:13px;color:#dce6f7}input,select{width:100%;min-width:0;background:#0d1527;color:#f2f6ff;border:1px solid #354662;border-radius:7px;padding:8px;font:inherit}.unit{font-size:11px;color:var(--muted)}
 .actions{display:flex;gap:9px;flex-wrap:wrap;margin:15px 0}button{background:var(--accent);color:#08101f;border:0;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer}button.secondary{background:#263751;color:#eaf1ff;border:1px solid #415674}
-.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}.metric span{display:block;color:var(--muted);font-size:12px}.metric strong{display:block;color:var(--green);font-size:21px;margin-top:5px;overflow-wrap:anywhere}.plotgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:14px}.plot-title{font-size:13px;color:#dce6f7;margin:0 0 7px}canvas{width:100%;height:255px;display:block;background:#0c1425;border:1px solid var(--line);border-radius:9px}.note{font-size:12px;color:var(--muted)}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1425;padding:12px;border-radius:9px;color:#cbd9f4;font-size:13px}.warning{border-left:3px solid #e8b15c;padding-left:10px}.pill{display:inline-block;border:1px solid #435777;color:#c8d8f5;border-radius:99px;padding:2px 8px;font-size:11px;margin-left:6px}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}.metric span{display:block;color:var(--muted);font-size:12px}.metric strong{display:block;color:var(--green);font-size:21px;margin-top:5px;overflow-wrap:anywhere}.plotgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:14px}.plot-title{font-size:13px;color:#dce6f7;margin:0 0 7px}canvas{width:100%;height:300px;display:block;background:#0c1425;border:1px solid var(--line);border-radius:9px}.note{font-size:12px;color:var(--muted)}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1425;padding:12px;border-radius:9px;color:#cbd9f4;font-size:13px}.warning{border-left:3px solid #e8b15c;padding-left:10px}.pill{display:inline-block;border:1px solid #435777;color:#c8d8f5;border-radius:99px;padding:2px 8px;font-size:11px;margin-left:6px}
 @media(max-width:520px){.fields{grid-template-columns:1fr 112px}.plotgrid{grid-template-columns:1fr}}
 </style></head>
 <body>
@@ -53,7 +53,7 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <section><div class="plot-title">Delay magnitude |D| [dB] vs ωτ</div><canvas id="delaymag"></canvas></section>
 <section><div class="plot-title">Phase of G(s) vs ωτ</div><canvas id="plantphase"></canvas></section>
 <section><div class="plot-title">Nyquist: Re L vs Im L（−1点付近の拡大）</div><canvas id="nyquist"></canvas></section>
-<section><div class="plot-title">Nyquist: Re L vs Im L（全体スケール）</div><canvas id="nyquistfull"></canvas></section>
+<section><div class="plot-title">Nyquist: Re L vs Im L（原点付近の拡大）</div><canvas id="nyquistorigin"></canvas></section><section><div class="plot-title">Nyquist: Re L vs Im L（全体スケール）</div><canvas id="nyquistfull"></canvas></section>
 </div>
 <section style="margin-top:15px"><h2>伝達関数モデルと交差周波数</h2><pre id="equations"></pre><p class="note warning">Loop Filterは Fast入力に R1-LF と C の直列枝、Slow入力に R2-LF、出力に RG を接地した回路としてモデル化しています。実回路図との接続関係が異なる場合、F_F(s)・F_S(s) を修正してください。</p><p class="note">G(s)=A/s（A&gt;0）の位相は−90°。D(s)=e^(−sτ) は |D|=1（0 dB）、位相は−ωτ。表示しているNyquistは正周波数側のみです。厳密な安定判別には負周波数側の共役軌跡と右半平面極数も必要です。</p></section>
 <p class="note">計算はすべてブラウザ内で実行されます。入力値の外部送信・データベース保存・アクセス解析は行いません。</p>
@@ -68,11 +68,48 @@ function fmt(x,u){return Number.isFinite(x)?x.toLocaleString('ja-JP',{maximumFra
 function interpolateCross(x,y,target){const found=[];for(let i=1;i<x.length;i++){const a=y[i-1]-target,b=y[i]-target;if(a===0)found.push(x[i-1]);else if(a*b<0){const t=(target-y[i-1])/(y[i]-y[i-1]);found.push(Math.exp(Math.log(x[i-1])+t*(Math.log(x[i])-Math.log(x[i-1]))));}}return found;}
 function interpAtLog(x,y,value){let i=1;while(i<x.length&&x[i]<value)i++;if(i>=x.length)return y[y.length-1];const t=(Math.log(value)-Math.log(x[i-1]))/(Math.log(x[i])-Math.log(x[i-1]));return y[i-1]+t*(y[i]-y[i-1]);}
 function unwrap(values){const out=[];for(let i=0;i<values.length;i++){let z=values[i];if(i){while(z-values[i-1]>180)z-=360;while(z-values[i-1]<-180)z+=360;out.push(out[i-1]+z-values[i-1]);}else out.push(z);}return out;}
-function draw(id,x,y,opt={}){const c=$(id),ctx=c.getContext('2d'),dpr=window.devicePixelRatio||1,w=Math.max(280,c.clientWidth),h=Math.max(180,c.clientHeight);c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
- let xmin=opt.xmin??Math.min(...x),xmax=opt.xmax??Math.max(...x),ymin=opt.ymin??Math.min(...y),ymax=opt.ymax??Math.max(...y);if(!Number.isFinite(ymin)||!Number.isFinite(ymax)||ymin===ymax){ymin=-1;ymax=1;}if(xmin===xmax){xmin-=1;xmax+=1;}const X=v=>34+(v-xmin)/(xmax-xmin)*(w-48),Y=v=>h-25-(v-ymin)/(ymax-ymin)*(h-48);
- ctx.strokeStyle='#293954';ctx.fillStyle='#aab8d0';ctx.lineWidth=1;ctx.font='10px system-ui';for(let i=0;i<=4;i++){const yy=24+i*(h-49)/4;ctx.beginPath();ctx.moveTo(34,yy);ctx.lineTo(w-14,yy);ctx.stroke();ctx.fillText((ymax-i*(ymax-ymin)/4).toPrecision(3),2,yy+3);const xx=34+i*(w-49)/4;ctx.beginPath();ctx.moveTo(xx,24);ctx.lineTo(xx,h-25);ctx.stroke();}
- ctx.strokeStyle='#79a8ff';ctx.lineWidth=2;ctx.beginPath();let started=false;for(let i=0;i<x.length;i++){if(!Number.isFinite(x[i])||!Number.isFinite(y[i]))continue;const px=X(x[i]),py=Y(y[i]);if(!started){ctx.moveTo(px,py);started=true;}else ctx.lineTo(px,py);}ctx.stroke();
- if(opt.marker){ctx.fillStyle='#ffbc6b';const px=X(opt.marker[0]),py=Y(opt.marker[1]);ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#aab8d0';ctx.fillText(opt.xlabel||'',Math.max(38,w/2-35),h-5);ctx.fillText(opt.ylabel||'',4,12);
+function niceTicks(min,max,count=5){
+ const span=max-min;if(!(span>0))return[min];
+ const raw=span/count,pow=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/pow;
+ const step=(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*pow;
+ const out=[];for(let v=Math.ceil(min/step-1e-9)*step;v<=max+step*1e-9;v+=step)out.push(Math.abs(v)<step*1e-9?0:v);
+ return out;
+}
+function axisNumber(v){
+ if(Math.abs(v)<1e-10)return "0";
+ const a=Math.abs(v);
+ if(a>=10000||a<0.001)return v.toExponential(1);
+ if(a>=1000)return (v/1000).toFixed(0)+"k";
+ if(a>=100)return v.toFixed(0);
+ if(a>=10)return v.toFixed(1).replace(/\.0$/,"");
+ if(a>=1)return v.toFixed(2).replace(/0+$/,"").replace(/\.$/,"");
+ return v.toFixed(3).replace(/0+$/,"").replace(/\.$/,"");
+}
+function draw(id,x,y,opt={}){
+ const c=$(id),ctx=c.getContext('2d'),dpr=window.devicePixelRatio||1,w=Math.max(280,c.clientWidth),h=Math.max(220,c.clientHeight);
+ c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+ const left=66,right=18,top=24,bottom=52;let xmin=opt.xmin??Math.min(...x),xmax=opt.xmax??Math.max(...x),ymin=opt.ymin??Math.min(...y),ymax=opt.ymax??Math.max(...y);
+ if(!Number.isFinite(ymin)||!Number.isFinite(ymax)||ymin===ymax){ymin=-1;ymax=1;}if(xmin===xmax){xmin-=1;xmax+=1;}
+ const pw=w-left-right,ph=h-top-bottom;
+ if(opt.equalAspect){const unit=Math.max((xmax-xmin)/pw,(ymax-ymin)/ph),cx=(xmin+xmax)/2,cy=(ymin+ymax)/2;xmin=cx-unit*pw/2;xmax=cx+unit*pw/2;ymin=cy-unit*ph/2;ymax=cy+unit*ph/2;}
+ const X=v=>left+(v-xmin)/(xmax-xmin)*pw,Y=v=>top+(ymax-v)/(ymax-ymin)*ph;
+ const xt=opt.xTickMode==="decade"?Array.from({length:Math.max(0,Math.floor(xmax)-Math.ceil(xmin)+1)},(_,i)=>Math.ceil(xmin)+i):niceTicks(xmin,xmax,5),yt=niceTicks(ymin,ymax,5);
+ ctx.font="11px system-ui";ctx.lineWidth=1;ctx.strokeStyle="#293954";ctx.fillStyle="#aab8d0";
+ yt.forEach(v=>{const yy=Y(v);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();ctx.textAlign="right";ctx.textBaseline="middle";ctx.fillText(axisNumber(v),left-8,yy);});
+ xt.forEach(v=>{const xx=X(v);ctx.beginPath();ctx.moveTo(xx,top);ctx.lineTo(xx,h-bottom);ctx.stroke();const label=opt.xTickMode==="decade"?axisNumber(Math.pow(10,v)):axisNumber(v);ctx.textAlign="center";ctx.textBaseline="top";ctx.fillText(label,xx,h-bottom+7);});
+ // Zero axes
+ if(xmin<=0&&xmax>=0){ctx.strokeStyle="#71819a";ctx.lineWidth=1.25;ctx.beginPath();ctx.moveTo(X(0),top);ctx.lineTo(X(0),h-bottom);ctx.stroke();}
+ if(ymin<=0&&ymax>=0){ctx.strokeStyle="#71819a";ctx.lineWidth=1.25;ctx.beginPath();ctx.moveTo(left,Y(0));ctx.lineTo(w-right,Y(0));ctx.stroke();}
+ // Unit circle for Nyquist views
+ if(opt.unitCircle&&xmin<1&&xmax>-1&&ymin<1&&ymax>-1){ctx.save();ctx.beginPath();ctx.rect(left,top,pw,ph);ctx.clip();ctx.setLineDash([5,5]);ctx.strokeStyle="#8b96a8";ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(X(0),Y(0),Math.abs(X(1)-X(0)),Math.abs(Y(1)-Y(0)),0,0,Math.PI*2);ctx.stroke();ctx.restore();ctx.setLineDash([]);}
+ ctx.save();ctx.beginPath();ctx.rect(left,top,pw,ph);ctx.clip();
+ ctx.strokeStyle="#79a8ff";ctx.lineWidth=2.2;ctx.beginPath();let begun=false;
+ for(let i=0;i<x.length;i++){if(!Number.isFinite(x[i])||!Number.isFinite(y[i]))continue;const px=X(x[i]),py=Y(y[i]);if(!begun){ctx.moveTo(px,py);begun=true;}else ctx.lineTo(px,py);}ctx.stroke();
+ if(opt.direction){[.25,.5,.75].forEach(q=>{const i=Math.max(0,Math.min(x.length-2,Math.floor((x.length-2)*q))),x1=X(x[i]),y1=Y(y[i]),x2=X(x[i+1]),y2=Y(y[i+1]);if([x1,y1,x2,y2].every(Number.isFinite)&&x2>=left&&x2<=w-right&&y2>=top&&y2<=h-bottom){const a=Math.atan2(y2-y1,x2-x1),len=9;ctx.fillStyle="#ffbc6b";ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-len*Math.cos(a-.55),y2-len*Math.sin(a-.55));ctx.lineTo(x2-len*Math.cos(a+.55),y2-len*Math.sin(a+.55));ctx.closePath();ctx.fill();}});}
+ ctx.restore();
+ if(opt.marker){const px=X(opt.marker[0]),py=Y(opt.marker[1]);if(px>=left&&px<=w-right&&py>=top&&py<=h-bottom){ctx.fillStyle="#ff6666";ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();ctx.font="12px system-ui";ctx.textAlign="left";ctx.textBaseline="bottom";ctx.fillText("−1",px+8,py-6);}}
+ ctx.fillStyle="#e2eafa";ctx.font="12px system-ui";ctx.textAlign="center";ctx.textBaseline="bottom";ctx.fillText(opt.xlabel||"横軸",left+pw/2,h-3);
+ ctx.save();ctx.translate(15,top+ph/2);ctx.rotate(-Math.PI/2);ctx.textAlign="center";ctx.textBaseline="top";ctx.fillText(opt.ylabel||"縦軸",0,0);ctx.restore();
 }
 function calculate(){
  const v={};ids.forEach(k=>v[k]=Number($(k).value));
@@ -85,7 +122,14 @@ function calculate(){
  const pms=gainCross.map(fc=>{const ph=interpAtLog(f,phase,fc);let normalized=((ph%360)+360)%360;if(normalized>0)normalized-=360;return{fc,pm:180+normalized};});const gms=phaseCross.map(fpc=>({fpc,gm:-interpAtLog(f,gain,fpc)}));
  $('fc').textContent=gainCross.length?fmt(gainCross[0],'Hz'):'範囲内に交差なし';$('pm').textContent=pms.length?fmt(Math.min(...pms.map(p=>p.pm)),'°'):'範囲内に交差なし';$('fpc').textContent=phaseCross.length?fmt(phaseCross[0],'Hz'):'範囲内に交差なし';$('gm').textContent=gms.length?fmt(Math.min(...gms.map(g=>g.gm)),'dB'):'範囲内に交差なし';
  const logf=f.map(Math.log10),wt=warr.map(w=>w*tau),nr=L.map(z=>z[0]),ni=L.map(z=>z[1]),mx=Math.max(1,...nr.map(Math.abs),...ni.map(Math.abs));
- draw('gain',logf,gain,{ylabel:'dB',xlabel:'log10(f [Hz])'});draw('phase',logf,phase,{ylabel:'deg',xlabel:'log10(f [Hz])'});draw('delaymag',wt,wt.map(()=>0),{ylabel:'dB',xlabel:'ωτ',ymin:-1,ymax:1});draw('plantphase',wt,wt.map(()=>-90),{ylabel:'deg',xlabel:'ωτ',ymin:-180,ymax:0});draw('nyquist',nr,ni,{xlabel:'Re L',ylabel:'Im L',xmin:-5,xmax:5,ymin:-5,ymax:5,marker:[-1,0]});draw('nyquistfull',nr,ni,{xlabel:'Re L',ylabel:'Im L',xmin:-mx,xmax:mx,ymin:-mx,ymax:mx,marker:[-1,0]});
+ const near=L.filter(z=>Math.hypot(z[0],z[1])>0&&Math.hypot(z[0],z[1])<0.01),originLim=near.length?Math.max(1e-5,Math.max(...near.map(z=>Math.max(Math.abs(z[0]),Math.abs(z[1]))))*1.1):0.01;
+ draw('gain',logf,gain,{ylabel:'開ループゲイン |L(jω)| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade'});
+ draw('phase',logf,phase,{ylabel:'開ループ位相 ∠L(jω) [deg]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade'});
+ draw('delaymag',wt,wt.map(()=>0),{ylabel:'遅延振幅 |D(jω)| [dB]',xlabel:'正規化角周波数 ωτ [rad]',xmin:0,ymin:-1,ymax:1});
+ draw('plantphase',wt,wt.map(()=>-90),{ylabel:'プラント位相 ∠G(jω) [deg]',xlabel:'正規化角周波数 ωτ [rad]',xmin:0,ymin:-100,ymax:-80});
+ draw('nyquist',nr,ni,{xlabel:'実部 Re L（無次元）',ylabel:'虚部 Im L（無次元）',xmin:-2.5,xmax:1,ymin:-1.5,ymax:1.5,equalAspect:true,unitCircle:true,marker:[-1,0],direction:true});
+ draw('nyquistorigin',nr,ni,{xlabel:'実部 Re L（無次元）',ylabel:'虚部 Im L（無次元）',xmin:-originLim,xmax:originLim,ymin:-originLim,ymax:originLim,equalAspect:true,direction:true});
+ draw('nyquistfull',nr,ni,{xlabel:'実部 Re L（無次元）',ylabel:'虚部 Im L（無次元）',xmin:-mx,xmax:mx,ymin:-mx,ymax:mx,equalAspect:true,marker:[-1,0],direction:true});
  const allPM=pms.length?pms.map(p=>`${p.fc.toPrecision(5)} Hz : ${p.pm.toFixed(3)}°`).join('\n'):'なし';const allGM=gms.length?gms.map(g=>`${g.fpc.toPrecision(5)} Hz : ${g.gm.toFixed(3)} dB`).join('\n'):'なし';
  $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nC_PI(s) = −(R2_PI/R1_PI + 1/(s R1_PI C_PI))\nY_F(s) = 1/(R1_LF + 1/(s C_LF))\nF_F(s) = Y_F/(Y_F + 1/R2_LF + 1/RG)\nF_S(s) = (1/R2_LF)/(Y_F + 1/R2_LF + 1/RG)\nC_eq(s) = F_F(s) + F_S(s) C_PI(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n※Loop Filterの接続は上記の仮定モデル。実回路図との照合が必要です。`;
 }
