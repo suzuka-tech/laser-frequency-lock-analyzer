@@ -83,7 +83,7 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 'use strict';
 const $=id=>document.getElementById(id);
 const ids=['kphi','kfm','rser','tau','pol','pir1','pir2','pic','ic1raux','ic1caux','lfr1','lfr2','lfc','lfrg','fmin','fmax','ppd','bumpLo','bumpHi','fcTarget'];
-const defaults={kphi:.0203718327,kfm:2.8e11,rser:280000,tau:28,pol:-1,pir1:4.7,pir2:100,pic:100,ic1raux:50,ic1caux:300,lfr1:.6,lfr2:4.8,lfc:100,lfrg:1000,fmin:10,fmax:1e8,ppd:50,bumpLo:700,bumpHi:800,fcTarget:0};
+const defaults={kphi:.0203718327,kfm:2.8e11,rser:280000,tau:28,pol:-1,pir1:4.7,pir2:100,pic:100,ic1raux:50,ic1caux:300,lfr1:.6,lfr2:4.8,lfc:100,lfrg:1000,fmin:10,fmax:1e8,ppd:50,bumpLo:700,bumpHi:800,fcTarget:500};
 const add=(a,b)=>[a[0]+b[0],a[1]+b[1]],mul=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]],div=(a,b)=>{const d=b[0]*b[0]+b[1]*b[1];return[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d]},abs=a=>Math.hypot(a[0],a[1]),db=a=>20*Math.log10(Math.max(abs(a),1e-300)),deg=a=>Math.atan2(a[1],a[0])*180/Math.PI;
 function fmt(x,u){return Number.isFinite(x)?x.toLocaleString('ja-JP',{maximumFractionDigits:4})+' '+u:'範囲内に交差なし'}
 function interpolateCross(x,y,target){const found=[];for(let i=1;i<x.length;i++){const a=y[i-1]-target,b=y[i]-target;if(a===0)found.push(x[i-1]);else if(a*b<0){const t=(target-y[i-1])/(y[i]-y[i-1]);found.push(Math.exp(Math.log(x[i-1])+t*(Math.log(x[i])-Math.log(x[i-1]))));}}return found;}
@@ -191,8 +191,9 @@ function calculate(){
  else if(worstGM.gm<6)judge('gmJudge','要改善：6 dB未満','bad');
  else if(worstGM.gm<10)judge('gmJudge','最低目安内：6〜10 dB','warn');
  else judge('gmJudge','良好の目安：10 dB以上','good');
- function peakJudge(id,peak){if(!peak){judge(id,'評価不可','warn');return;}if(peak.db<=3.52)judge(id,'良好の目安：1.5以下','good');else if(peak.db<=6.02)judge(id,'許容目安：1.5〜2','warn');else judge(id,'要確認：2超のピーク','bad');}
- peakJudge('speakJudge',sPeak);peakJudge('tpeakJudge',tPeak);peakJudge('sbandJudge',sBand);peakJudge('tbandJudge',tBand);
+ function peakJudgeS(id,peak){if(!peak){judge(id,'評価不可','warn');return;}if(peak.db<=3.52)judge(id,'良好の目安：Ms ≤ 1.5','good');else if(peak.db<=6.02)judge(id,'許容目安：1.5 < Ms ≤ 2','warn');else judge(id,'要確認：Ms > 2','bad');}
+ function peakJudgeT(id,peak){if(!peak){judge(id,'評価不可','warn');return;}if(peak.db<=1.94)judge(id,'良好目標：Mt ≤ 1.25','good');else if(peak.db<=3.52)judge(id,'実用目安：1.25 < Mt ≤ 1.5','good');else if(peak.db<=6.02)judge(id,'注意：1.5 < Mt ≤ 2','warn');else judge(id,'要確認：Mt > 2','bad');}
+ peakJudgeS('speakJudge',sPeak);peakJudgeT('tpeakJudge',tPeak);peakJudgeS('sbandJudge',sBand);peakJudgeT('tbandJudge',tBand);
  const fcEval=fcDisplay?evaluate(2*Math.PI*fcDisplay).L:null, fpcEval=fpcDisplay?evaluate(2*Math.PI*fpcDisplay).L:null;
  const fcMarker=fcDisplay?{x:Math.log10(fcDisplay),y:interpAtLog(f,phase,fcDisplay)}:null;
  const fpcPhase=worstGM?.target??null;
