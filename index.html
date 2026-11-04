@@ -21,8 +21,8 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <label>FM感度 KFM <span class="unit">Hz/A</span></label><input id="kfm" type="number" step="any" value="2.8e11">
 <label>Rs + rd <span class="unit">Ω</span></label><input id="rser" type="number" step="any" value="280000">
 <label>遅延 τ <span class="unit">ns</span></label><input id="tau" type="number" step="any" value="28">
-<label>追加ループ極性（PI反転を除く）</label><select id="pol"><option value="1" selected>+1（基準符号）</option><option value="-1">−1（追加反転）</option></select>
-<p class="note" style="grid-column:1/-1">kφ・KFMは正の大きさとして入力し、IC1の反転符号はPIモデルに含めています。この前提では追加極性+1を初期値とします。実機の帰還方向は小さな試験信号で確認してください。</p>
+<label>追加ループ極性（未確認の仮定）</label><select id="pol"><option value="1" selected>+1の仮定</option><option value="-1">−1の仮定</option></select>
+<p class="note warning" style="grid-column:1/-1">実機の帰還極性はまだ確認できていません。以下のPMは選択した符号に依存する暫定値です。必ず逆極性の場合のPMも併せて確認し、実機の誤差信号・アクチュエータの符号で確定してください。</p>
 </div></section>
 <section><h2>② PI回路 / IC1モデル</h2><div class="fields">
 <label>PIモデル</label><select id="piModel"><option value="simple">基本PI（比較用）</option><option value="ic1" selected>Lock circuit IC1（入力RC枝込み）</option></select>
@@ -55,7 +55,7 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <div class="actions"><button id="calc">再計算</button><button class="secondary" id="reset">初期値に戻す</button></div>
 <div class="metric-grid">
 <div class="metric"><span>Gain crossover fc</span><small class="guide">目安：抑えたい周波数ノイズ帯域より高く設定。ただし遅延・位相余裕が上限を決める。バンプ周波数と同一視しない。</small><div class="judge" id="fcJudge">目標未設定</div><strong id="fc">—</strong></div>
-<div class="metric"><span>Phase margin PM</span><small class="guide">目安：45〜60°。30°未満は振動・リンギングに注意。60°超は安定余裕が大きいが応答速度も確認。</small><div class="judge" id="pmJudge">—</div><strong id="pm">—</strong></div>
+<div class="metric"><span>Phase margin PM（選択極性）</span><small class="guide">目安：45〜60°。ただし実機の帰還極性が未確認の間は、この値だけで安定性を判断しない。</small><div class="judge" id="pmJudge">—</div><div class="judge warn" id="pmOpposite">逆極性のPM：—</div><strong id="pm">—</strong></div>
 <div class="metric"><span>Phase crossover fpc</span><small class="guide">目安：fpc自体に固定値なし。この周波数でGMが6 dB以上、できれば10 dB以上あるかを確認。</small><div class="judge" id="fpcJudge">—</div><strong id="fpc">—</strong></div>
 <div class="metric"><span>Gain margin GM</span><small class="guide">目安：6 dB以上、できれば10 dB以上。小さいほどゲイン変動で不安定になりやすい。</small><div class="judge" id="gmJudge">—</div><strong id="gm">—</strong></div>
 <div class="metric"><span>感度関数 |S| の最大値</span><small class="guide">高さ Ms：1.5以下が良好、2以下が許容目安。位置 fMs：実測ピーク700〜800 kHzと照合する。Hzに一律の合否値はない。</small><div class="judge" id="speakJudge">—</div><div class="judge" id="sPeakFreqJudge">ピーク位置 —</div><strong id="speak">—</strong></div>
@@ -210,15 +210,18 @@ function calculate(){
  phaseCrossEvents.sort((a,b)=>a.fpc-b.fpc);
  const pms=gainCross.map(fc=>{const phaseAt=interpAtLog(f,phase,fc),target=-180+360*Math.round((phaseAt+180)/360);return{fc,phaseAt,target,pm:phaseAt-target};});
  const gms=phaseCrossEvents.map(e=>({fpc:e.fpc,target:e.target,gainAt:interpAtLog(f,gain,e.fpc),gm:-interpAtLog(f,gain,e.fpc)}));
- const worstPM=pms.length?pms.reduce((a,b)=>b.pm<a.pm?b:a):null,worstGM=gms.length?gms.reduce((a,b)=>b.gm<a.gm?b:a):null;
+ const worstPM=pms.length?pms.reduce((a,b)=>b.pm<a.pm?b:a):null;
+ const pmsOpp=gainCross.map(fc=>{const phaseAt=interpAtLog(f,phase,fc)+180,target=-180+360*Math.round((phaseAt+180)/360);return{fc,phaseAt,target,pm:phaseAt-target};});
+ const worstPMOpp=pmsOpp.length?pmsOpp.reduce((a,b)=>b.pm<a.pm?b:a):null;
+ const worstGM=gms.length?gms.reduce((a,b)=>b.gm<a.gm?b:a):null;
  const fcDisplay=worstPM?.fc??gainCross[0]??null,fpcDisplay=worstGM?.fpc??phaseCrossEvents[0]?.fpc??null;
- $('fc').textContent=fcDisplay?fmt(fcDisplay,'Hz'):'交差なし';$('pm').textContent=worstPM?fmt(worstPM.pm,'°'):'交差なし';$('fpc').textContent=fpcDisplay?fmt(fpcDisplay,'Hz'):'交差なし';$('gm').textContent=worstGM?fmt(worstGM.gm,'dB'):'交差なし';
+ $('fc').textContent=fcDisplay?fmt(fcDisplay,'Hz'):'交差なし';$('pm').textContent=worstPM?fmt(worstPM.pm,'°'):'交差なし';$('pmOpposite').textContent=worstPMOpp?'逆極性なら PM '+fmt(worstPMOpp.pm,'°')+'（fc '+fmt(worstPMOpp.fc,'Hz')+'）':'逆極性：交差なし';$('fpc').textContent=fpcDisplay?fmt(fpcDisplay,'Hz'):'交差なし';$('gm').textContent=worstGM?fmt(worstGM.gm,'dB'):'交差なし';
  function judge(id,text,kind){const el=$(id);el.textContent=text;el.className='judge '+(kind||'');}
  if(v.fcTarget<=0)judge('fcJudge','目標未設定：抑圧したい帯域から設定','warn');
  else if(!fcDisplay)judge('fcJudge','要確認：計算範囲内に0 dB交差なし','bad');
  else {const ratio=fcDisplay/(v.fcTarget*1e3);judge('fcJudge',ratio>=1?'目標達成':ratio>=.8?'目標に近い':'目標未達',ratio>=1?'good':ratio>=.8?'warn':'bad');}
  if(!worstPM)judge('pmJudge','評価不可：交差なし','warn');
- else if(worstPM.pm<0)judge('pmJudge','要確認：追加極性・位相モデルの符号を確認（負のPM）','bad');
+ else if(worstPM.pm<0)judge('pmJudge','負のPM：ただし帰還極性未確定のため符号確認が先','bad');
  else if(worstPM.pm<30)judge('pmJudge','要改善：30°未満','bad');
  else if(worstPM.pm<45)judge('pmJudge','注意：推奨目安より小さい','warn');
  else if(worstPM.pm<=60)judge('pmJudge','良好の目安：45〜60°','good');
