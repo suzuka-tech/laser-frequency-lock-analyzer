@@ -78,7 +78,7 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <section><div class="plot-title">Step 3：閉ループ感度 |S| [dB]（30 MHzロック点周りの変動周波数）</div><canvas id="sensitivity"></canvas></section>
 <section><div class="plot-title">Step 3：相補感度 |T| [dB]（30 MHzロック点周りの変動周波数）</div><canvas id="complementary"></canvas></section>
 </div>
-<section style="margin-top:15px"><h2>伝達関数モデルと交差周波数</h2><pre id="equations"></pre><p class="note warning">Loop Filterは、Fast入力→RF→ノードA（RGをGNDへ）→CF→出力、出力からRSを介してSlow側へ接続する受動ネットワークです。今回、出力負荷RloadとPI側直列出力抵抗RPIoutを追加しました。Rload=1 MΩは仮の高インピーダンス、RPIout=51 ΩはLock circuit図のR5を直列出力抵抗として扱った初期近似です。実際の接続・入力インピーダンスに合わせて調整してください。</p><p class="note">PI制御のIC1入力RC枝はLock circuit側の実回路図に基づくモデルです。IC2・IC3は今回の受動Loop Filterには含めていません。S=1/(1+L) は感度、T=L/(1+L) は相補感度です。どちらが測定されたバンプに対応するかは測定点とノイズ注入位置によります。</p><p class="note">G(s)=A/s、D(s)=e^(−sτ) の仮定は従来どおりです。今回のLoop Filterモデルは出力負荷を高インピーダンスとして扱っています。表示しているNyquistは正周波数側のみです。</p></section>
+<section style="margin-top:15px"><h2>伝達関数モデルと交差周波数</h2><pre id="equations"></pre><p class="note warning">Loop Filterは、Fast入力→RF→ノードA（RGをGNDへ）→CF→出力、出力からRSを介してSlow側へ接続する受動ネットワークです。今回、出力負荷RloadとPI側直列出力抵抗RPIoutを追加しました。Rload=1 MΩは仮の高インピーダンスです。RPIout=51 ΩはLock circuit図のR5をPI出力の直列抵抗として仮置きしています。R5がSlow入力へ至る実際の経路に含まれない場合は0 Ωにし、実際の次段入力抵抗をRloadへ設定してください。</p><p class="note">PI制御のIC1入力RC枝はLock circuit側の実回路図に基づくモデルです。IC2・IC3は今回の受動Loop Filterには含めていません。S=1/(1+L) は感度、T=L/(1+L) は相補感度です。どちらが測定されたバンプに対応するかは測定点とノイズ注入位置によります。</p><p class="note">G(s)=A/s、D(s)=e^(−sτ) の仮定は従来どおりです。今回のLoop Filterモデルは出力負荷を高インピーダンスとして扱っています。表示しているNyquistは正周波数側のみです。</p></section>
 <section style="margin-top:15px"><h2>実験・モデル照合の進め方（調整手順）</h2>
 <div class="grid">
 <section><h2>① まずロックの帯域を確認</h2><p>見る指標：<b>fc</b></p><p>ループフィルターのゲインを少しずつ調整し、どこまで速い周波数変動を抑えられるか確認する。ロック時・非ロック時の周波数ノイズPSDを比較し、抑圧が失われ始める周波数とモデルのfcを照合する。</p><p class="note">今回の暫定目標：fc ≈ 500 kHz。700〜800 kHzのサーボバンプより少し低い開始目標であり、実測で確定したUGFではない。</p></section>
@@ -154,7 +154,7 @@ function draw(id,x,y,opt={}){
 function calculate(){
  const v={};ids.forEach(k=>v[k]=Number($(k).value));
  const positive=['kphi','kfm','rser','pir1','pic','ic1raux','ic1caux','lfr1','lfr2','lfc','lfrg','lfLoad','fmin','fmax'];if(positive.some(k=>!Number.isFinite(v[k])||v[k]<=0)||!Number.isFinite(v.piRout)||v.piRout<0||!Number.isFinite(v.pir2)||v.pir2<0||!Number.isFinite(v.tau)||v.tau<0||v.fmax<=v.fmin||!Number.isFinite(v.bumpLo)||!Number.isFinite(v.bumpHi)||v.bumpLo<=0||v.bumpHi<=v.bumpLo||!Number.isFinite(v.fcTarget)||v.fcTarget<0||!Number.isFinite(v.beatCarrier)||v.beatCarrier<=0){alert('入力値を確認してください。容量・周波数・指定した抵抗は正の値、τとPIのR2は0以上にしてください。');return;}
- const tau=v.tau*1e-9,Rpi=v.pir1*1e3,Cpi=v.pic*1e-9,Raux=v.ic1raux*1e3,Caux=v.ic1caux*1e-12,Rf=v.lfr1*1e3,R2=v.lfr2,Cf=v.lfc*1e-9,Rg=v.lfr2,Rs=v.lfrg,RL=v.lfLoad*1e3,RpiOut=v.piRout,A=2*Math.PI*v.kfm*v.kphi/v.rser,piModel=$('piModel').value;
+ const tau=v.tau*1e-9,Rpi=v.pir1*1e3,Cpi=v.pic*1e-9,Raux=v.ic1raux*1e3,Caux=v.ic1caux*1e-12,Rf=v.lfr1*1e3,Cf=v.lfc*1e-9,Rg=v.lfr2,Rs=v.lfrg,RL=v.lfLoad*1e3,RpiOut=v.piRout,A=2*Math.PI*v.kfm*v.kphi/v.rser,piModel=$('piModel').value;
  const ppd=Math.max(20,Math.min(200,Math.round(v.ppd)||50)),N=Math.min(6000,Math.ceil(Math.log10(v.fmax/v.fmin)*ppd)+1);const f=[],warr=[],L=[],rawPhase=[];
  function evaluate(w){
  const Zc=[0,-1/(w*Cf)],Rload=[RL,0],RslowSource=[Rs+RpiOut,0],Rshunt=[Rg,0],Rfast=[Rf,0];
