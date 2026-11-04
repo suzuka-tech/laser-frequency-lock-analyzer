@@ -47,14 +47,14 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 </div>
 <div class="actions"><button id="calc">再計算</button><button class="secondary" id="reset">初期値に戻す</button></div>
 <div class="metric-grid">
-<div class="metric"><span>Gain crossover fc（PM最小点）</span><small>|L| が 0 dB になる交差周波数。表示はPMが最小の交差点。</small><strong id="fc">—</strong></div>
-<div class="metric"><span>Phase margin PM（最小値）</span><small>fcで位相が−180°からどれだけ離れているか。大きいほど位相の余裕がある。</small><strong id="pm">—</strong></div>
-<div class="metric"><span>Phase crossover fpc（GM最小点）</span><small>位相が−180°（またはその同値角）になる交差周波数。表示はGMが最小の点。</small><strong id="fpc">—</strong></div>
-<div class="metric"><span>Gain margin GM（最小値）</span><small>fpcで発振限界に達するまで、ループゲインを増やせる余裕。</small><strong id="gm">—</strong></div>
-<div class="metric"><span>Step 3：感度関数 |S| のピーク</span><small>全周波数範囲で、残留誤差・外乱感度が最も大きくなる点。</small><strong id="speak">—</strong></div>
-<div class="metric"><span>Step 3：相補感度 |T| のピーク</span><small>全周波数範囲で、閉ループ出力応答が最も大きくなる点。</small><strong id="tpeak">—</strong></div>
-<div class="metric"><span>実測帯域内 |S| 最大</span><small>指定した実測帯域内で、残留誤差・外乱感度が最大となる値。</small><strong id="sband">—</strong></div>
-<div class="metric"><span>実測帯域内 |T| 最大</span><small>指定した実測帯域内で、閉ループ出力応答が最大となる値。</small><strong id="tband">—</strong></div>
+<div class="metric"><span>Gain crossover fc（PM最小点）</span><small>ロックが追従・抑圧できる速さの目安。高くすると速い揺らぎまで抑えやすい一方、上げすぎると遅延で不安定になりやすい。</small><strong id="fc">—</strong></div>
+<div class="metric"><span>Phase margin PM（最小値）</span><small>ロックの振動しにくさ・安定余裕の目安。小さすぎるとロック中の揺れやサーボバンプが大きくなり、最悪は発振する。</small><strong id="pm">—</strong></div>
+<div class="metric"><span>Phase crossover fpc（GM最小点）</span><small>フィードバックが発振方向に傾く位相になる周波数。単独の良し悪しより、その周波数でゲインが十分小さいか（GM）を見る。</small><strong id="fpc">—</strong></div>
+<div class="metric"><span>Gain margin GM（最小値）</span><small>回路ゲインや部品値がずれても発振しないための余裕。小さいと、ゲインを少し変えただけで発振・不安定化しやすい。</small><strong id="gm">—</strong></div>
+<div class="metric"><span>Step 3：感度関数 |S| のピーク</span><small>レーザー周波数の外乱がどれだけ残るかの最悪点。ピークが高いと、その周波数の揺らぎを抑えきれず、残留ノイズに山が出やすい。</small><strong id="speak">—</strong></div>
+<div class="metric"><span>Step 3：相補感度 |T| のピーク</span><small>制御系が測定信号・基準信号の変動を出力へどれだけ通すかの山。高いピークは共振的な応答やサーボバンプの候補になる。</small><strong id="tpeak">—</strong></div>
+<div class="metric"><span>実測帯域内 |S| 最大</span><small>実測した700〜800 kHz付近で、外乱抑圧が最も弱い場所を探す。ここにピークがあれば、レーザー周波数ノイズの山を説明できる可能性がある。</small><strong id="sband">—</strong></div>
+<div class="metric"><span>実測帯域内 |T| 最大</span><small>実測帯域で閉ループ応答が盛り上がるかを確認する。ここにピークがあれば、測定点によっては観測されたサーボバンプの候補になる。</small><strong id="tband">—</strong></div>
 </div>
 <div class="plotgrid">
 <section><div class="plot-title">Open-loop gain |L(jω)| [dB]</div><canvas id="gain"></canvas></section>
