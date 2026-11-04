@@ -52,8 +52,8 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <div class="metric"><span>Phase margin PM</span><small class="guide">目安：45〜60°。30°未満は振動・リンギングに注意。60°超は安定余裕が大きいが応答速度も確認。</small><div class="judge" id="pmJudge">—</div><strong id="pm">—</strong></div>
 <div class="metric"><span>Phase crossover fpc</span><small class="guide">目安：fpc自体に固定値なし。この周波数でGMが6 dB以上、できれば10 dB以上あるかを確認。</small><div class="judge" id="fpcJudge">—</div><strong id="fpc">—</strong></div>
 <div class="metric"><span>Gain margin GM</span><small class="guide">目安：6 dB以上、できれば10 dB以上。小さいほどゲイン変動で不安定になりやすい。</small><div class="judge" id="gmJudge">—</div><strong id="gm">—</strong></div>
-<div class="metric"><span>感度関数 |S| の最大値</span><small class="guide">目安：Ms= max|S|。1.5以下（+3.52 dB以下）を良好の目標、2以下（+6.02 dB以下）を許容の目安とする。</small><div class="judge" id="speakJudge">—</div><strong id="speak">—</strong></div>
-<div class="metric"><span>相補感度 |T| の最大値</span><small class="guide">目安：Mt=max|T|。1.25以下（+1.94 dB以下）がより厳しい目標、1.5以下（+3.52 dB以下）を実用上の目安とする。</small><div class="judge" id="tpeakJudge">—</div><strong id="tpeak">—</strong></div>
+<div class="metric"><span>感度関数 |S| の最大値</span><small class="guide">高さ Ms：1.5以下が良好、2以下が許容目安。位置 fMs：実測ピーク700〜800 kHzと照合する。Hzに一律の合否値はない。</small><div class="judge" id="speakJudge">—</div><div class="judge" id="sPeakFreqJudge">ピーク位置 —</div><strong id="speak">—</strong></div>
+<div class="metric"><span>相補感度 |T| の最大値</span><small class="guide">高さ Mt：1.25以下が理想、1.5以下が実用目安、2超は強いピーク。位置 fMt：実測ピーク700〜800 kHzと照合。</small><div class="judge" id="tpeakJudge">—</div><div class="judge" id="tPeakFreqJudge">ピーク位置 —</div><strong id="tpeak">—</strong></div>
 <div class="metric"><span>実測帯域内 |S| 最大</span><small class="guide">表示は「ピーク周波数 Hz」と「M値（線形倍率・dB）」。Mが1未満なら外乱を抑圧、1超なら増幅。</small><div class="judge" id="sbandJudge">—</div><strong id="sband">—</strong></div>
 <div class="metric"><span>実測帯域内 |T| 最大</span><small class="guide">表示は「ピーク周波数 Hz」と「M値（線形倍率・dB）」。M値を1.25〜1.5の目安と比較し、測定点に応じて解釈。</small><div class="judge" id="tbandJudge">—</div><strong id="tband">—</strong></div>
 </div>
@@ -193,7 +193,9 @@ function calculate(){
  else judge('gmJudge','良好の目安：10 dB以上','good');
  function peakJudgeS(id,peak){if(!peak){judge(id,'評価不可','warn');return;}if(peak.db<=3.52)judge(id,'良好の目安：Ms ≤ 1.5','good');else if(peak.db<=6.02)judge(id,'許容目安：1.5 < Ms ≤ 2','warn');else judge(id,'要確認：Ms > 2','bad');}
  function peakJudgeT(id,peak){if(!peak){judge(id,'評価不可','warn');return;}if(peak.db<=1.94)judge(id,'良好目標：Mt ≤ 1.25','good');else if(peak.db<=3.52)judge(id,'実用目安：1.25 < Mt ≤ 1.5','good');else if(peak.db<=6.02)judge(id,'注意：1.5 < Mt ≤ 2','warn');else judge(id,'要確認：Mt > 2','bad');}
+ function peakFrequencyJudge(id,peak){if(!peak){judge(id,'ピーク位置：評価不可','warn');return;}const bandText=(v.bumpLo.toFixed(0)+'〜'+v.bumpHi.toFixed(0)+' kHz');if(peak.f>=bandLo&&peak.f<=bandHi)judge(id,'ピーク位置：実測帯域内 '+bandText,'good');else if(peak.f<bandLo)judge(id,'ピーク位置：実測帯域より低い（'+bandText+'）','warn');else judge(id,'ピーク位置：実測帯域より高い（'+bandText+'）','warn');}
  peakJudgeS('speakJudge',sPeak);peakJudgeT('tpeakJudge',tPeak);peakJudgeS('sbandJudge',sBand);peakJudgeT('tbandJudge',tBand);
+ peakFrequencyJudge('sPeakFreqJudge',sPeak);peakFrequencyJudge('tPeakFreqJudge',tPeak);
  const fcEval=fcDisplay?evaluate(2*Math.PI*fcDisplay).L:null, fpcEval=fpcDisplay?evaluate(2*Math.PI*fpcDisplay).L:null;
  const fcMarker=fcDisplay?{x:Math.log10(fcDisplay),y:interpAtLog(f,phase,fcDisplay)}:null;
  const fpcPhase=worstGM?.target??null;
