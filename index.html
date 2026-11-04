@@ -59,6 +59,12 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <div class="metric"><span>実測帯域内 |S| 最大</span><small class="guide">表示は「ピーク周波数 Hz」と「M値（線形倍率・dB）」。Mが1未満なら外乱を抑圧、1超なら増幅。</small><div class="judge" id="sbandJudge">—</div><strong id="sband">—</strong></div>
 <div class="metric"><span>実測帯域内 |T| 最大</span><small class="guide">表示は「ピーク周波数 Hz」と「M値（線形倍率・dB）」。M値を1.25〜1.5の目安と比較し、測定点に応じて解釈。</small><div class="judge" id="tbandJudge">—</div><strong id="tband">—</strong></div>
 </div>
+<section class="metric-grid">
+<div class="metric"><span>目標fcでの現在の開ループゲイン</span><small class="guide">設定した目標周波数で、現在のモデルが0 dBまでどれだけ届いているか。</small><strong id="targetGain">—</strong></div>
+<div class="metric"><span>目標fcに必要な追加ゲイン</span><small class="guide">現在のモデルのまま目標fcを0 dB交差にするための理論上の追加ゲイン。</small><strong id="targetBoost">—</strong></div>
+<div class="metric"><span>受動LFモデルの理論上限</span><small class="guide">現在の式でF_F・F_Sを受動分圧とした場合の、目標周波数での開ループゲイン上限。</small><strong id="passiveLimit">—</strong></div>
+<div class="metric"><span>モデル構造による不足分</span><small class="guide">受動LFの理論上限でも0 dBに届かない分。実回路の増幅段やプラントモデルの再確認が必要。</small><strong id="modelGap">—</strong></div>
+</section>
 <div class="plotgrid">
 <section><div class="plot-title">Open-loop gain |L(jω)| [dB]（横軸：30 MHzロック点周りの変動周波数）</div><canvas id="gain"></canvas></section>
 <section><div class="plot-title">Open-loop phase ∠L(jω) [deg]（unwrap）</div><canvas id="phase"></canvas></section>
@@ -161,6 +167,30 @@ function calculate(){
  const sDb=S.map(db),tDb=T.map(db);
  function maximumOnSweep(values){let best=null;for(let i=0;i<values.length;i++)if(Number.isFinite(values[i])&&(!best||values[i]>best.db))best={index:i,f:f[i],db:values[i]};return best;}
  const sPeak=maximumOnSweep(sDb),tPeak=maximumOnSweep(tDb);
+ const targetHz=v.fcTarget*1e3;
+ const targetInRange=targetHz>=v.fmin&&targetHz<=v.fmax;
+ if(targetHz>0&&targetInRange){
+  const targetW=2*Math.PI*targetHz,targetL=evaluate(targetW).L,targetGainDb=db(targetL);
+  const targetBoostDb=-targetGainDb,targetBoostRatio=Math.pow(10,targetBoostDb/20);
+  const zfbTarget=[v.pir2,-1/(targetW*Cpi)];
+  let yinTarget=[1/Rpi,0];
+  if(piModel==='ic1'){
+   const qTarget=targetW*Raux*Caux,qdTarget=1+qTarget*qTarget;
+   const yAuxTarget=[(targetW*targetW*Raux*Caux*Caux)/qdTarget,(targetW*Caux)/qdTarget];
+   yinTarget=add(yinTarget,yAuxTarget);
+  }
+  const cpiTarget=mul(mul(zfbTarget,yinTarget),[-1,0]);
+  const plantTarget=A/targetW;
+  const passiveMaxDb=20*Math.log10(plantTarget*(1+abs(cpiTarget)));
+  $('targetGain').textContent=targetGainDb.toFixed(2)+' dB';
+  $('targetBoost').textContent=targetBoostDb.toFixed(2)+' dB（×'+targetBoostRatio.toFixed(1)+'）';
+  $('passiveLimit').textContent=passiveMaxDb.toFixed(2)+' dB';
+  $('modelGap').textContent=passiveMaxDb<0?(-passiveMaxDb).toFixed(2)+' dB以上':'受動LF上限では不足なし';
+  $('modelGap').style.color=passiveMaxDb<0?'#ff8585':'#5bd6ac';
+ }else{
+  ['targetGain','targetBoost','passiveLimit','modelGap'].forEach(id=>$(id).textContent=targetHz>0?'計算範囲外':'目標未設定');
+ }
+
  const bandLo=v.bumpLo*1e3,bandHi=v.bumpHi*1e3;
  function bandMaximum(values){let best=null;for(let i=0;i<f.length;i++)if(f[i]>=bandLo&&f[i]<=bandHi&&(!best||values[i]>best.db))best={f:f[i],db:values[i]};return best;}
  const sBand=bandMaximum(sDb),tBand=bandMaximum(tDb);
