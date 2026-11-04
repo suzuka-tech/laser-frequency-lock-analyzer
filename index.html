@@ -51,6 +51,7 @@ header{padding:26px max(18px,calc((100vw - 1240px)/2));border-bottom:1px solid v
 <section><div class="plot-title">Open-loop gain |L(jω)| [dB]</div><canvas id="gain"></canvas></section>
 <section><div class="plot-title">Open-loop phase ∠L(jω) [deg]（unwrap）</div><canvas id="phase"></canvas></section>
 <section><div class="plot-title">Delay magnitude |D| [dB] vs ωτ</div><canvas id="delaymag"></canvas></section>
+<section><div class="plot-title">Delay phase ∠D(jω) [deg] vs ωτ</div><canvas id="delayphase"></canvas></section>
 <section><div class="plot-title">Phase of G(s) vs ωτ</div><canvas id="plantphase"></canvas></section>
 <section><div class="plot-title">Nyquist: Re L vs Im L（−1点付近の拡大）</div><canvas id="nyquist"></canvas></section>
 <section><div class="plot-title">Nyquist: Re L vs Im L（原点付近の拡大）</div><canvas id="nyquistorigin"></canvas></section><section><div class="plot-title">Nyquist: Re L vs Im L（全体スケール）</div><canvas id="nyquistfull"></canvas></section>
@@ -88,7 +89,7 @@ function axisNumber(v){
 function draw(id,x,y,opt={}){
  const c=$(id),ctx=c.getContext('2d'),dpr=window.devicePixelRatio||1,w=Math.max(280,c.clientWidth),h=Math.max(220,c.clientHeight);
  c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
- const left=66,right=18,top=24,bottom=52;let xmin=opt.xmin??Math.min(...x),xmax=opt.xmax??Math.max(...x),ymin=opt.ymin??Math.min(...y),ymax=opt.ymax??Math.max(...y);
+ const left=66,right=18,top=26,bottom=54;let xmin=opt.xmin??Math.min(...x),xmax=opt.xmax??Math.max(...x),ymin=opt.ymin??Math.min(...y),ymax=opt.ymax??Math.max(...y);
  if(!Number.isFinite(ymin)||!Number.isFinite(ymax)||ymin===ymax){ymin=-1;ymax=1;}if(xmin===xmax){xmin-=1;xmax+=1;}
  const pw=w-left-right,ph=h-top-bottom;
  if(opt.equalAspect){const unit=Math.max((xmax-xmin)/pw,(ymax-ymin)/ph),cx=(xmin+xmax)/2,cy=(ymin+ymax)/2;xmin=cx-unit*pw/2;xmax=cx+unit*pw/2;ymin=cy-unit*ph/2;ymax=cy+unit*ph/2;}
@@ -96,18 +97,27 @@ function draw(id,x,y,opt={}){
  const xt=opt.xTickMode==="decade"?Array.from({length:Math.max(0,Math.floor(xmax)-Math.ceil(xmin)+1)},(_,i)=>Math.ceil(xmin)+i):niceTicks(xmin,xmax,5),yt=niceTicks(ymin,ymax,5);
  ctx.font="11px system-ui";ctx.lineWidth=1;ctx.strokeStyle="#293954";ctx.fillStyle="#aab8d0";
  yt.forEach(v=>{const yy=Y(v);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();ctx.textAlign="right";ctx.textBaseline="middle";ctx.fillText(axisNumber(v),left-8,yy);});
- xt.forEach(v=>{const xx=X(v);ctx.beginPath();ctx.moveTo(xx,top);ctx.lineTo(xx,h-bottom);ctx.stroke();const label=opt.xTickMode==="decade"?axisNumber(Math.pow(10,v)):axisNumber(v);ctx.textAlign="center";ctx.textBaseline="top";ctx.fillText(label,xx,h-bottom+7);});
+ xt.forEach(v=>{const xx=X(v);ctx.beginPath();ctx.moveTo(xx,top);ctx.lineTo(xx,h-bottom);ctx.stroke();const label=(opt.xTickMode==="decade"?axisNumber(Math.pow(10,v)):axisNumber(v))+(opt.xTickSuffix||"");ctx.textAlign="center";ctx.textBaseline="top";ctx.fillText(label,xx,h-bottom+7);});
  // Zero axes
  if(xmin<=0&&xmax>=0){ctx.strokeStyle="#71819a";ctx.lineWidth=1.25;ctx.beginPath();ctx.moveTo(X(0),top);ctx.lineTo(X(0),h-bottom);ctx.stroke();}
  if(ymin<=0&&ymax>=0){ctx.strokeStyle="#71819a";ctx.lineWidth=1.25;ctx.beginPath();ctx.moveTo(left,Y(0));ctx.lineTo(w-right,Y(0));ctx.stroke();}
  // Unit circle for Nyquist views
  if(opt.unitCircle&&xmin<1&&xmax>-1&&ymin<1&&ymax>-1){ctx.save();ctx.beginPath();ctx.rect(left,top,pw,ph);ctx.clip();ctx.setLineDash([5,5]);ctx.strokeStyle="#8b96a8";ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(X(0),Y(0),Math.abs(X(1)-X(0)),Math.abs(Y(1)-Y(0)),0,0,Math.PI*2);ctx.stroke();ctx.restore();ctx.setLineDash([]);}
- ctx.save();ctx.beginPath();ctx.rect(left,top,pw,ph);ctx.clip();
- ctx.strokeStyle="#79a8ff";ctx.lineWidth=2.2;ctx.beginPath();let begun=false;
+ // Horizontal and vertical reference lines
+ (opt.xLines||[]).forEach(line=>{if(line.x<xmin||line.x>xmax)return;ctx.save();ctx.setLineDash(line.dash||[5,4]);ctx.strokeStyle=line.color||"#ffbc6b";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(X(line.x),top);ctx.lineTo(X(line.x),h-bottom);ctx.stroke();ctx.setLineDash([]);if(line.label){ctx.fillStyle=line.color||"#ffbc6b";ctx.font="11px system-ui";ctx.textAlign="left";ctx.textBaseline="top";ctx.fillText(line.label,Math.min(w-right-64,X(line.x)+4),top+3+(line.labelOffset||0));}ctx.restore();});
+ (opt.yLines||[]).forEach(line=>{if(line.y<ymin||line.y>ymax)return;ctx.save();ctx.setLineDash(line.dash||[5,4]);ctx.strokeStyle=line.color||"#ffbc6b";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(left,Y(line.y));ctx.lineTo(w-right,Y(line.y));ctx.stroke();ctx.setLineDash([]);if(line.label){ctx.fillStyle=line.color||"#ffbc6b";ctx.font="11px system-ui";ctx.textAlign="right";ctx.textBaseline="bottom";ctx.fillText(line.label,w-right-3,Y(line.y)-3);}ctx.restore();});
+ // Data curve
+ ctx.save();ctx.beginPath();ctx.rect(left,top,pw,ph);ctx.clip();ctx.strokeStyle="#79a8ff";ctx.lineWidth=2.2;ctx.beginPath();let begun=false;
  for(let i=0;i<x.length;i++){if(!Number.isFinite(x[i])||!Number.isFinite(y[i]))continue;const px=X(x[i]),py=Y(y[i]);if(!begun){ctx.moveTo(px,py);begun=true;}else ctx.lineTo(px,py);}ctx.stroke();
  if(opt.direction){[.25,.5,.75].forEach(q=>{const i=Math.max(0,Math.min(x.length-2,Math.floor((x.length-2)*q))),x1=X(x[i]),y1=Y(y[i]),x2=X(x[i+1]),y2=Y(y[i+1]);if([x1,y1,x2,y2].every(Number.isFinite)&&x2>=left&&x2<=w-right&&y2>=top&&y2<=h-bottom){const a=Math.atan2(y2-y1,x2-x1),len=9;ctx.fillStyle="#ffbc6b";ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-len*Math.cos(a-.55),y2-len*Math.sin(a-.55));ctx.lineTo(x2-len*Math.cos(a+.55),y2-len*Math.sin(a+.55));ctx.closePath();ctx.fill();}});}
  ctx.restore();
+ // Legacy single marker
  if(opt.marker){const px=X(opt.marker[0]),py=Y(opt.marker[1]);if(px>=left&&px<=w-right&&py>=top&&py<=h-bottom){ctx.fillStyle="#ff6666";ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();ctx.font="12px system-ui";ctx.textAlign="left";ctx.textBaseline="bottom";ctx.fillText("−1",px+8,py-6);}}
+ // Named markers, used for gain/phase crossovers and Nyquist points
+ (opt.markers||[]).forEach(m=>{const px=X(m.x),py=Y(m.y);if(px<left||px>w-right||py<top||py>h-bottom)return;ctx.save();ctx.fillStyle=m.color||"#5bd6ac";ctx.strokeStyle="#0b1020";ctx.lineWidth=1.5;ctx.beginPath();if(m.shape==="square")ctx.rect(px-5,py-5,10,10);else if(m.shape==="diamond"){ctx.moveTo(px,py-6);ctx.lineTo(px+6,py);ctx.lineTo(px,py+6);ctx.lineTo(px-6,py);ctx.closePath();}else ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();ctx.stroke();if(m.label){ctx.fillStyle=m.color||"#5bd6ac";ctx.font="11px system-ui";ctx.textAlign="left";ctx.textBaseline="bottom";ctx.fillText(m.label,Math.min(w-right-95,px+7),py-5);}ctx.restore();});
+ // PM bracket at the gain-crossover point
+ (opt.verticalBrackets||[]).forEach(b=>{const px=X(b.x),ya=Y(b.y1),yb=Y(b.y2);if(px<left||px>w-right||Math.max(ya,yb)<top||Math.min(ya,yb)>h-bottom)return;ctx.save();ctx.strokeStyle=b.color||"#e5ad55";ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(px,ya);ctx.lineTo(px,yb);ctx.moveTo(px-5,ya);ctx.lineTo(px+5,ya);ctx.moveTo(px-5,yb);ctx.lineTo(px+5,yb);ctx.stroke();ctx.fillStyle=b.color||"#e5ad55";ctx.font="11px system-ui";ctx.textAlign="left";ctx.textBaseline="middle";ctx.fillText(b.label||"",Math.min(w-right-90,px+8),(ya+yb)/2);ctx.restore();});
+ // Axis titles
  ctx.fillStyle="#e2eafa";ctx.font="12px system-ui";ctx.textAlign="center";ctx.textBaseline="bottom";ctx.fillText(opt.xlabel||"横軸",left+pw/2,h-3);
  ctx.save();ctx.translate(15,top+ph/2);ctx.rotate(-Math.PI/2);ctx.textAlign="center";ctx.textBaseline="top";ctx.fillText(opt.ylabel||"縦軸",0,0);ctx.restore();
 }
@@ -118,20 +128,32 @@ function calculate(){
  const ppd=Math.max(20,Math.min(200,Math.round(v.ppd)||50)),N=Math.min(6000,Math.ceil(Math.log10(v.fmax/v.fmin)*ppd)+1);const f=[],warr=[],L=[],rawPhase=[];
  function evaluate(w){const zFast=add([Rf,0],[0,-1/(w*Cf)]),yf=div([1,0],zFast),den=add(add(yf,[1/R2,0]),[1/Rg,0]);const Ff=div(yf,den),Fs=div([1/R2,0],den);const Cpiw=[-v.pir2/Rpi,1/(w*Rpi*Cpi)],Ceq=add(Ff,mul(Fs,Cpiw)),G=[0,-A/w],D=[Math.cos(w*tau),-Math.sin(w*tau)];return{G,L:mul(mul(mul(G,Ceq),D),[Number(v.pol),0])};}
  for(let i=0;i<N;i++){const ff=v.fmin*Math.pow(v.fmax/v.fmin,i/(N-1)),ww=2*Math.PI*ff,z=evaluate(ww);f.push(ff);warr.push(ww);L.push(z.L);rawPhase.push(deg(z.L));}
- const gain=L.map(db),phase=unwrap(rawPhase),gainCross=interpolateCross(f,gain,0),phaseCross=[];for(let k=-60;k<=60;k++)phaseCross.push(...interpolateCross(f,phase,-180+360*k));phaseCross.sort((a,b)=>a-b);
- const pms=gainCross.map(fc=>{const ph=interpAtLog(f,phase,fc);let normalized=((ph%360)+360)%360;if(normalized>0)normalized-=360;return{fc,pm:180+normalized};});const gms=phaseCross.map(fpc=>({fpc,gm:-interpAtLog(f,gain,fpc)}));
- $('fc').textContent=gainCross.length?fmt(gainCross[0],'Hz'):'範囲内に交差なし';$('pm').textContent=pms.length?fmt(Math.min(...pms.map(p=>p.pm)),'°'):'範囲内に交差なし';$('fpc').textContent=phaseCross.length?fmt(phaseCross[0],'Hz'):'範囲内に交差なし';$('gm').textContent=gms.length?fmt(Math.min(...gms.map(g=>g.gm)),'dB'):'範囲内に交差なし';
+ const gain=L.map(db),phase=unwrap(rawPhase),gainCross=interpolateCross(f,gain,0),phaseCrossEvents=[];
+ for(let k=-60;k<=60;k++){const target=-180+360*k;interpolateCross(f,phase,target).forEach(fpc=>phaseCrossEvents.push({fpc,target}));}
+ phaseCrossEvents.sort((a,b)=>a.fpc-b.fpc);
+ const pms=gainCross.map(fc=>{const phaseAt=interpAtLog(f,phase,fc),target=-180+360*Math.round((phaseAt+180)/360);return{fc,phaseAt,target,pm:phaseAt-target};});
+ const gms=phaseCrossEvents.map(e=>({fpc:e.fpc,target:e.target,gainAt:interpAtLog(f,gain,e.fpc),gm:-interpAtLog(f,gain,e.fpc)}));
+ const worstPM=pms.length?pms.reduce((a,b)=>b.pm<a.pm?b:a):null,worstGM=gms.length?gms.reduce((a,b)=>b.gm<a.gm?b:a):null;
+ const fcDisplay=worstPM?.fc??gainCross[0]??null,fpcDisplay=worstGM?.fpc??phaseCrossEvents[0]?.fpc??null;
+ $('fc').textContent=fcDisplay?fmt(fcDisplay,'Hz'):'範囲内に交差なし';$('pm').textContent=worstPM?fmt(worstPM.pm,'°'):'範囲内に交差なし';$('fpc').textContent=fpcDisplay?fmt(fpcDisplay,'Hz'):'範囲内に交差なし';$('gm').textContent=worstGM?fmt(worstGM.gm,'dB'):'範囲内に交差なし';
+ const fcEval=fcDisplay?evaluate(2*Math.PI*fcDisplay).L:null, fpcEval=fpcDisplay?evaluate(2*Math.PI*fpcDisplay).L:null;
+ const fcMarker=fcDisplay?{x:Math.log10(fcDisplay),y:interpAtLog(f,phase,fcDisplay)}:null;
+ const fpcPhase=worstGM?.target??null;
  const logf=f.map(Math.log10),wt=warr.map(w=>w*tau),nr=L.map(z=>z[0]),ni=L.map(z=>z[1]),mx=Math.max(1,...nr.map(Math.abs),...ni.map(Math.abs));
  const near=L.filter(z=>Math.hypot(z[0],z[1])>0&&Math.hypot(z[0],z[1])<0.01),originLim=near.length?Math.max(1e-5,Math.max(...near.map(z=>Math.max(Math.abs(z[0]),Math.abs(z[1]))))*1.1):0.01;
- draw('gain',logf,gain,{ylabel:'開ループゲイン |L(jω)| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade'});
- draw('phase',logf,phase,{ylabel:'開ループ位相 ∠L(jω) [deg]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade'});
+ const gainMarkers=[],phaseMarkers=[],nyquistMarkers=[];
+ if(fcDisplay&&fcEval){gainMarkers.push({x:Math.log10(fcDisplay),y:0,color:"#5bd6ac",label:"fc / PM",shape:"circle"});phaseMarkers.push({x:Math.log10(fcDisplay),y:fcMarker.y,color:"#5bd6ac",label:"fc",shape:"circle"});nyquistMarkers.push({x:fcEval[0],y:fcEval[1],color:"#5bd6ac",label:"fc",shape:"circle"});}
+ if(fpcDisplay&&fpcEval){const yFpc=interpAtLog(f,gain,fpcDisplay);gainMarkers.push({x:Math.log10(fpcDisplay),y:yFpc,color:"#ffbc6b",label:"fpc / GM",shape:"diamond"});phaseMarkers.push({x:Math.log10(fpcDisplay),y:fpcPhase,color:"#ffbc6b",label:"fpc",shape:"diamond"});nyquistMarkers.push({x:fpcEval[0],y:fpcEval[1],color:"#ffbc6b",label:"fpc",shape:"diamond"});}
+ draw('gain',logf,gain,{ylabel:'開ループゲイン |L(jω)| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:"#e5ad55",label:"0 dB"}],xLines:[...(fcDisplay?[{x:Math.log10(fcDisplay),color:"#5bd6ac",label:"fc"}]:[]),...(fpcDisplay?[{x:Math.log10(fpcDisplay),color:"#ffbc6b",label:"fpc",labelOffset:15}]:[])],markers:gainMarkers});
+ draw('phase',logf,phase,{ylabel:'開ループ位相 ∠L(jω) [deg]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[...(worstPM?[{y:worstPM.target,color:"#e5ad55",label:axisNumber(worstPM.target)+"°"}]:[])],xLines:[...(fcDisplay?[{x:Math.log10(fcDisplay),color:"#5bd6ac",label:"fc"}]:[]),...(fpcDisplay?[{x:Math.log10(fpcDisplay),color:"#ffbc6b",label:"fpc",labelOffset:15}]:[])],markers:phaseMarkers,verticalBrackets:worstPM?[{x:Math.log10(worstPM.fc),y1:worstPM.target,y2:worstPM.phaseAt,label:"PM "+worstPM.pm.toFixed(2)+"°",color:"#e5ad55"}]:[]});
  draw('delaymag',wt,wt.map(()=>0),{ylabel:'遅延振幅 |D(jω)| [dB]',xlabel:'正規化角周波数 ωτ [rad]',xmin:0,ymin:-1,ymax:1});
+ draw('delayphase',wt,wt.map(z=>-z*180/Math.PI),{ylabel:'遅延位相 ∠D(jω) [deg]',xlabel:'正規化角周波数 ωτ [rad]',xmin:0});
  draw('plantphase',wt,wt.map(()=>-90),{ylabel:'プラント位相 ∠G(jω) [deg]',xlabel:'正規化角周波数 ωτ [rad]',xmin:0,ymin:-100,ymax:-80});
- draw('nyquist',nr,ni,{xlabel:'実部 Re L（無次元）',ylabel:'虚部 Im L（無次元）',xmin:-2.5,xmax:1,ymin:-1.5,ymax:1.5,equalAspect:true,unitCircle:true,marker:[-1,0],direction:true});
- draw('nyquistorigin',nr,ni,{xlabel:'実部 Re L（無次元）',ylabel:'虚部 Im L（無次元）',xmin:-originLim,xmax:originLim,ymin:-originLim,ymax:originLim,equalAspect:true,direction:true});
- draw('nyquistfull',nr,ni,{xlabel:'実部 Re L（無次元）',ylabel:'虚部 Im L（無次元）',xmin:-mx,xmax:mx,ymin:-mx,ymax:mx,equalAspect:true,marker:[-1,0],direction:true});
+ draw('nyquist',nr,ni,{xlabel:'実部 Re L（無次元）',ylabel:'虚部 Im L（無次元）',xmin:-2.5,xmax:1,ymin:-1.5,ymax:1.5,equalAspect:true,unitCircle:true,marker:[-1,0],direction:true,markers:nyquistMarkers});
+ draw('nyquistorigin',nr,ni,{xlabel:'実部 Re L（無次元）',ylabel:'虚部 Im L（無次元）',xmin:-originLim,xmax:originLim,ymin:-originLim,ymax:originLim,equalAspect:true,direction:true,markers:nyquistMarkers});
+ draw('nyquistfull',nr,ni,{xlabel:'実部 Re L（無次元）',ylabel:'虚部 Im L（無次元）',xmin:-mx,xmax:mx,ymin:-mx,ymax:mx,equalAspect:true,marker:[-1,0],direction:true,markers:nyquistMarkers});
  const allPM=pms.length?pms.map(p=>`${p.fc.toPrecision(5)} Hz : ${p.pm.toFixed(3)}°`).join('\n'):'なし';const allGM=gms.length?gms.map(g=>`${g.fpc.toPrecision(5)} Hz : ${g.gm.toFixed(3)} dB`).join('\n'):'なし';
- $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nC_PI(s) = −(R2_PI/R1_PI + 1/(s R1_PI C_PI))\nY_F(s) = 1/(R1_LF + 1/(s C_LF))\nF_F(s) = Y_F/(Y_F + 1/R2_LF + 1/RG)\nF_S(s) = (1/R2_LF)/(Y_F + 1/R2_LF + 1/RG)\nC_eq(s) = F_F(s) + F_S(s) C_PI(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n※Loop Filterの接続は上記の仮定モデル。実回路図との照合が必要です。`;
+ $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nC_PI(s) = −(R2_PI/R1_PI + 1/(s R1_PI C_PI))\nY_F(s) = 1/(R1_LF + 1/(s C_LF))\nF_F(s) = Y_F/(Y_F + 1/R2_LF + 1/RG)\nF_S(s) = (1/R2_LF)/(Y_F + 1/R2_LF + 1/RG)\nC_eq(s) = F_F(s) + F_S(s) C_PI(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n表示中のマーカー：緑=PMが最小のゲイン交差点 fc、橙=GMが最小の位相交差点 fpc。\n\n※Loop Filterの接続は上記の仮定モデル。実回路図との照合が必要です。`;
 }
 $('calc').addEventListener('click',calculate);$('reset').addEventListener('click',()=>{ids.forEach(k=>$(k).value=defaults[k]);calculate();});ids.forEach(k=>$(k).addEventListener('change',calculate));window.addEventListener('resize',()=>{if(window._resizeTimer)clearTimeout(window._resizeTimer);window._resizeTimer=setTimeout(calculate,120);});calculate();
 </script></body></html>
