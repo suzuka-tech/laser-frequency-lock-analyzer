@@ -27,6 +27,9 @@ button:active{
  box-shadow:0 1px 0 rgba(28,48,78,.78),0 2px 5px rgba(0,0,0,.22),inset 0 2px 4px rgba(0,0,0,.16);
 }
 button:focus-visible{outline:2px solid #dce8ff;outline-offset:3px}
+button.best{background:linear-gradient(180deg,#277c68 0%,#17614f 100%);color:#f2fffb;border:1px solid #48aa91;box-shadow:0 3px 0 rgba(5,49,39,.85),0 5px 12px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.16)}
+button.best:hover{filter:brightness(1.12);transform:translateY(-2px);box-shadow:0 5px 0 rgba(5,49,39,.85),0 8px 16px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.2)}
+button.best:active{filter:brightness(.92);transform:translateY(2px) scale(.985);box-shadow:0 1px 0 rgba(5,49,39,.9),0 2px 5px rgba(0,0,0,.2),inset 0 2px 4px rgba(0,0,0,.2)}
 button.secondary{
  background:linear-gradient(180deg,#304562 0%,#263751 100%);
  color:#eaf1ff;border:1px solid #526b8d;
@@ -86,7 +89,7 @@ button.secondary:active{
 </div><p class="note">周波数範囲内を対数間隔で計算します。点数は 20〜200 points/decade に制限。目標fc=500 kHzは、実測バンプ約1 MHzより低い暫定開始値です。最終値は実測のノイズ抑圧帯域とPM・GMで決定してください。</p></section>
 </div>
 <p class="note warning">周波数軸 f は30 MHzのビート周波数そのものではなく、30 MHzにロックした状態の周りに重なる周波数変動・変調の速さ（Fourier周波数）です。例：f=1 MHzは「30 MHzでロックしている信号に対する1 MHzの揺らぎ」を表し、ロック目標が1 MHzという意味ではありません。</p>
-<div class="actions"><button id="calc">再計算</button><button class="secondary" id="reset">初期値に戻す</button></div>
+<div class="actions"><button id="calc">再計算</button><button class="secondary" id="reset">初期値に戻す</button><button class="best" id="bestApply" type="button">最適値</button><button class="secondary" id="bestSave" type="button">最適値を更新</button></div><p class="note" id="bestStatus" aria-live="polite">最適値の初期設定：実機でカウント改善を確認した条件。現在の設定を「最適値を更新」でこのブラウザーに保存できます。</p>
 <div class="metric-grid">
 <div class="metric"><span>Gain crossover fc</span><small class="guide">目安：抑えたい周波数ノイズ帯域より高く設定。ただし遅延・位相余裕が上限を決める。バンプ周波数と同一視しない。</small><div class="judge" id="fcJudge">目標未設定</div><strong id="fc">—</strong></div>
 <div class="metric"><span>Phase margin PM（選択極性）</span><small class="guide">目安：45〜60°。ただし実機の帰還極性が未確認の間は、この値だけで安定性を判断しない。</small><div class="judge" id="pmJudge">—</div><div class="judge warn" id="pmOpposite">逆極性のPM：—</div><strong id="pm">—</strong></div>
@@ -131,7 +134,7 @@ button.secondary:active{
 </div>
 <p class="note warning">重要：サーボバンプのピーク周波数はUGFと同一とは限らず、一般にUGFより上側に現れることがある。まずfcを仮置きし、開ループ測定またはロック/非ロックPSDとの比較で更新する。現在の回路モデルは暫定部分を含むため、計算結果だけで実機の安定性を断定しない。</p>
 </section>
-<p class="note">計算はすべてブラウザ内で実行されます。入力値の外部送信・データベース保存・アクセス解析は行いません。</p>
+<p class="note">計算はすべてブラウザ内で実行されます。「最適値」はこのブラウザーのローカルストレージに保存され、外部送信されません。</p>
 </main>
 <script>
 'use strict';
@@ -320,5 +323,45 @@ function calculate(){
  $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nPI model: ${piModel==='ic1'?'Step 2: IC1 input RC included':'Step 1: basic PI'}\nZfb(s) = R2_PI + 1/(s C_PI)\nYin(s) = 1/R1_PI ${piModel==='ic1'?'+ s Caux/(1+s Raux Caux)':''}\nC_PI,eff(s) = −Zfb(s) Yin(s)\nR1_PI=${Rpi} Ω, R2_PI=${v.pir2} Ω, C_PI=${Cpi} F\nAux branch: Raux=${Raux} Ω, Caux=${Caux} F\n\nS(s)=1/(1+L(s)); T(s)=L(s)/(1+L(s))\nBeat carrier = ${v.beatCarrier} MHz (lock setpoint); plotted f is modulation/offset frequency around the lock point.\nMeasured bump comparison band: ${bandLo}–${bandHi} Hz\nFast-path-only H_F(s): PI Slow source = 0 V (AC GND), external Rload and RPIout excluded\nZC1(s)=1/(s C1), ZRF=RF || ZC1\nZC2(s)=1/(s C2), Zshunt=RG+ZC2 (series branch to GND)\nZC(s)=1/(s CF), Rslow=RS+RPIout\nZoutFast=Rload || Rslow\nZbranch=ZC+Rpost+ZoutFast\nZeq=Zshunt || Zbranch\nF_F(s)=[Zeq/(ZRF+Zeq)] [ZoutFast/Zbranch]\nZA=ZRF || Zshunt, ZbranchSlow=ZC+Rpost+ZA\nZload=Rload || ZbranchSlow\nC1=${C1} F (${v.lfC1} pF), C2=${C2} F (${v.lfC2} µF)\nRpost=${Rpost} Ω\nF_S(s)=Zload/(Rslow+Zload)\nRload=${RL} Ω, RPIout=${RpiOut} Ω\nC_eq(s)=F_F(s)+F_S(s) C_PI,eff(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n表示中のマーカー：緑=PMが最小のゲイン交差点 fc、橙=GMが最小の位相交差点 fpc。\n\n※追加ループ極性は、正のkφ・KFMとPI反転を明示したうえでのモデル上の符号です。実機の負帰還方向は小さな試験信号で確認してください。Loop Filterはユーザー説明に基づく受動RCネットワーク。出力負荷は高インピーダンスと仮定。負荷が有限なら、そのインピーダンスを追加してください。`;
 }
 function syncSliders(){ $('lfr1Number').value=String(Number($('lfr1').value)); $('lfPostNumber').value=String(Number($('lfPost').value)); }
+const bestProfileKey='laserFrequencyLockAnalyzer.bestProfile.v1';
+// Seed with the experimentally improved condition: C1=68 pF, C2=100 nF,
+// RF=340 Ω, with the previously tested PI values. This is a starting "best"
+// profile, not a claim of a mathematically proven global optimum.
+const initialBestProfile={...defaults,lfr1:340,lfC1:68,lfC2:0.1,pir1:100,pir2:100,pic:10,ic1raux:50,ic1caux:300,piModel:'ic1'};
+function readBestProfile(){
+ try{
+  const raw=localStorage.getItem(bestProfileKey);
+  if(!raw)return null;
+  const parsed=JSON.parse(raw);
+  if(!parsed||typeof parsed!=='object'||!parsed.values)return null;
+  return parsed;
+ }catch(err){return null;}
+}
+function applyBestProfile(){
+ const saved=readBestProfile();
+ const profile=saved&&saved.values?saved.values:initialBestProfile;
+ ids.forEach(k=>{if(profile[k]!==undefined&&profile[k]!==null)$(k).value=String(profile[k]);});
+ if(profile.piModel)$('piModel').value=profile.piModel;
+ syncSliders();
+ calculate();
+ $('bestStatus').textContent=saved
+  ? '保存済みの最適値を読み込みました。保存日時：'+(saved.updatedAt||'記録なし')
+  : '実機でカウント改善を確認した初期候補を読み込みました（RF=340 Ω、C1=68 pF、C2=100 nF）。まだこのブラウザーに保存された更新値はありません。';
+}
+function saveBestProfile(){
+ const invalid=ids.filter(k=>$(k).value.trim()===''||!Number.isFinite(Number($(k).value)));
+ if(invalid.length){alert('数値が未入力または不正な項目があります。入力値を確認してください。');return;}
+ const values={};ids.forEach(k=>values[k]=Number($(k).value));
+ values.piModel=$('piModel').value;
+ const saved={values,updatedAt:new Date().toLocaleString('ja-JP')};
+ try{
+  localStorage.setItem(bestProfileKey,JSON.stringify(saved));
+  $('bestStatus').textContent='現在の設定を最適値として保存しました。次回「最適値」を押すとこの設定を読み込みます。';
+ }catch(err){
+  $('bestStatus').textContent='このブラウザーに保存できませんでした。プライベートブラウズや保存容量の設定を確認してください。';
+ }
+}
+$('bestApply').addEventListener('click',applyBestProfile);
+$('bestSave').addEventListener('click',saveBestProfile);
 $('calc').addEventListener('click',calculate);$('reset').addEventListener('click',()=>{ids.forEach(k=>$(k).value=defaults[k]);syncSliders();calculate();});ids.forEach(k=>$(k).addEventListener('change',()=>{syncSliders();calculate();}));['lfr1','lfPost'].forEach(k=>$(k).addEventListener('input',()=>{syncSliders();calculate();}));[['lfr1Number','lfr1',0,10000],['lfPostNumber','lfPost',0,100000]].forEach(([inputId,rangeId,min,max])=>$(inputId).addEventListener('change',()=>{const n=Number($(inputId).value);if(!Number.isFinite(n)||n<min||n>max){alert('抵抗値は'+min+'〜'+max+' Ωで入力してください。');syncSliders();return;}$ (rangeId).value=String(n);syncSliders();calculate();}));syncSliders();window.addEventListener('resize',()=>{if(window._resizeTimer)clearTimeout(window._resizeTimer);window._resizeTimer=setTimeout(calculate,120);});calculate();
 </script></body></html>
