@@ -306,7 +306,8 @@ function calculate(){
  const piCornerInRange=piCornerHz!==null&&piCornerHz>=v.fmin&&piCornerHz<=v.fmax;
  $('piCorner').textContent=piCornerHz?fmt(piCornerHz,'Hz'):'R2=0のため定義なし';
  $('piKp').textContent=(v.pir2/Rpi).toPrecision(5)+'（'+(20*Math.log10(Math.max(v.pir2/Rpi,1e-300))).toFixed(2)+' dB）';
- $('piAtCorner').textContent=piCornerHz?'比例ゲイン比 +3.01 dB':'—';
+ const piCornerMagnitude=Math.SQRT2*v.pir2/Rpi;
+ $('piAtCorner').textContent=piCornerHz?piCornerMagnitude.toPrecision(5)+'（'+(20*Math.log10(piCornerMagnitude)).toFixed(2)+' dB）':'—';
 
  const near=L.filter(z=>Math.hypot(z[0],z[1])>0&&Math.hypot(z[0],z[1])<0.01),originLim=near.length?Math.max(1e-5,Math.max(...near.map(z=>Math.max(Math.abs(z[0]),Math.abs(z[1]))))*1.1):0.01;
  const gainMarkers=[],phaseMarkers=[],nyquistMarkers=[];
