@@ -128,13 +128,16 @@ button.secondary:active{
 <div class="metric-grid">
 <div class="metric"><span>PIコーナー周波数 f_PI</span><small class="guide">R2とCで決まるPIの折れ点</small><strong id="piCorner">—</strong></div>
 <div class="metric"><span>高周波側の比例ゲイン R2/R1</span><small class="guide">比例制御領域のゲイン（線形倍率）</small><strong id="piKp">—</strong></div>
-<div class="metric"><span>PIコーナーでのゲイン</span><small class="guide">高周波側の比例ゲインに対して約+3.01 dB</small><strong id="piAtCorner">—</strong></div>
+<div class="metric"><span>PIコーナーでのゲイン</span><small class="guide">高周波側の比例ゲインより正確に+3.01 dB（同じPI特性の別の読み方）</small><strong id="piAtCorner">—</strong></div>
+<div class="metric"><span>PIコーナー比 f_PI / fc</span><small class="guide">暫定設計目安：0.1〜0.2。fcが求まらない場合は評価できません。</small><div class="judge" id="piFcJudge">—</div><strong id="piFcRatio">—</strong></div>
+<div class="metric"><span>fcでのPI位相寄与</span><small class="guide">基本PI式の位相 θ_PI(fc)=−tan⁻¹(f_PI/fc)。ループ全体の位相余裕ではありません。</small><strong id="piPhaseAtFc">—</strong></div>
 </div>
 <div class="plotgrid">
 <section><div class="plot-title">PIゲイン |G_PI(jω)| [dB]</div><canvas id="piGain"></canvas></section>
 <section><div class="plot-title">PI位相 θ [deg]（図11の定義）</div><canvas id="piPhase"></canvas></section>
 </div>
-<p class="note warning">この2図は図11の基本PI式だけを表示し、IC1モデルの追加入力RC枝（Raux・Caux）は含みません。一方、ループ全体の開ループBode線図には、PIモデル選択が「IC1」の場合、その追加入力RC枝も含まれます。</p>
+<p class="note">「高周波側の比例ゲイン R2/R1」は高周波で収束するゲイン、「PIコーナーでのゲイン」は f=f_PI での実際の値です。両者は別々に調整する指標ではなく、PIコーナーでの値は常に比例ゲインの √2 倍（+3.01 dB）です。</p>
+<p class="note warning">f_PI/fc の 0.1〜0.2 は位相遅れを抑えるための暫定的な初期設計目安で、普遍的な最適範囲ではありません。fcはモデル上のゲイン交差周波数です。また、この2図と比率評価は図11の基本PI式に基づき、IC1の追加入力RC枝は含みません。ループ全体のBode線図には、PIモデル選択が「IC1」の場合、その追加枝も含まれます。</p>
 </section>
 <section style="margin-top:15px"><h2>伝達関数モデルと交差周波数</h2><pre id="equations"></pre><p class="note warning">Loop Filterは、Fast入力→(RF∥C1)→ノードA、ノードAから(RG+C2)直列枝でGNDへ、ノードA→既存CF→Rpost→出力、出力からRSを介してSlow側へ接続する受動ネットワークとしてモデル化しています。今回、出力負荷RloadとPI側直列出力抵抗RPIoutも含めています。既存の中央コンデンサCFとRpostはそのまま直列経路に残しています。Rload=1 MΩは仮の高インピーダンスです。RPIout=51 ΩはIC1出力→51 Ω→POLの経路がSlow端子へ接続される場合の直列抵抗として仮置きしています。POLとSlow端子の接続が異なる場合は0 Ωにしてください。Rload=1 MΩも未確認の仮定です。</p><p class="note">PI制御のIC1入力RC枝はLock circuit側の実回路図に基づくモデルです。IC2・IC3は今回の受動Loop Filterには含めていません。S=1/(1+L) は感度、T=L/(1+L) は相補感度です。どちらが測定されたバンプに対応するかは測定点とノイズ注入位置によります。</p><p class="note">G(s)=A/s、D(s)=e^(−sτ) の仮定は従来どおりです。今回のLoop Filterモデルは出力負荷を高インピーダンスとして扱っています。表示しているNyquistは正周波数側のみです。</p></section>
 <section style="margin-top:15px"><h2>実験・モデル照合の進め方（調整手順）</h2>
@@ -308,6 +311,21 @@ function calculate(){
  $('piKp').textContent=(v.pir2/Rpi).toPrecision(5)+'（'+(20*Math.log10(Math.max(v.pir2/Rpi,1e-300))).toFixed(2)+' dB）';
  const piCornerMagnitude=Math.SQRT2*v.pir2/Rpi;
  $('piAtCorner').textContent=piCornerHz?piCornerMagnitude.toPrecision(5)+'（'+(20*Math.log10(piCornerMagnitude)).toFixed(2)+' dB）':'—';
+ if(piCornerHz&&fcDisplay){
+  const piFcRatio=piCornerHz/fcDisplay;
+  const piPhaseAtFc=-Math.atan(piFcRatio)*180/Math.PI;
+  $('piFcRatio').textContent=piFcRatio.toPrecision(4);
+  $('piPhaseAtFc').textContent=piPhaseAtFc.toFixed(2)+'°';
+  const piJudge=$('piFcJudge');
+  if(piFcRatio>=0.1&&piFcRatio<=0.2){piJudge.textContent='暫定目安 0.1〜0.2 の範囲';piJudge.className='judge good';}
+  else if(piFcRatio<0.1){piJudge.textContent='暫定目安より低い：fcでのPI位相遅れは小さい';piJudge.className='judge warn';}
+  else{piJudge.textContent='暫定目安より高い：fcでのPI位相遅れが大きくなる';piJudge.className='judge warn';}
+ }else{
+  $('piFcRatio').textContent='fc未確定';
+  $('piPhaseAtFc').textContent='—';
+  $('piFcJudge').textContent='ゲイン交差がないため評価不可';
+  $('piFcJudge').className='judge warn';
+ }
 
  const near=L.filter(z=>Math.hypot(z[0],z[1])>0&&Math.hypot(z[0],z[1])<0.01),originLim=near.length?Math.max(1e-5,Math.max(...near.map(z=>Math.max(Math.abs(z[0]),Math.abs(z[1]))))*1.1):0.01;
  const gainMarkers=[],phaseMarkers=[],nyquistMarkers=[];
