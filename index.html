@@ -332,45 +332,73 @@ function calculate(){
  $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nPI model: ${piModel==='ic1'?'Step 2: IC1 input RC included':'Step 1: basic PI'}\nZfb(s) = R2_PI + 1/(s C_PI)\nYin(s) = 1/R1_PI ${piModel==='ic1'?'+ s Caux/(1+s Raux Caux)':''}\nC_PI,eff(s) = −Zfb(s) Yin(s)\nR1_PI=${Rpi} Ω, R2_PI=${v.pir2} Ω, C_PI=${Cpi} F\nAux branch: Raux=${Raux} Ω, Caux=${Caux} F\n\nS(s)=1/(1+L(s)); T(s)=L(s)/(1+L(s))\nBeat carrier = ${v.beatCarrier} MHz (lock setpoint); plotted f is modulation/offset frequency around the lock point.\nMeasured bump comparison band: ${bandLo}–${bandHi} Hz\nZC1(s)=1/(s C1), ZRF=RF || ZC1\nZC2(s)=1/(s C2), Zshunt=RG+ZC2 (series branch to GND)\nZC(s)=1/(s CF), Rslow=RS+RPIout\nZoutFast=Rload || Rslow\nZbranch=ZC+Rpost+ZoutFast\nZeq=Zshunt || Zbranch\nF_F(s)=[Zeq/(ZRF+Zeq)] [ZoutFast/Zbranch]\nZA=ZRF || Zshunt, ZbranchSlow=ZC+Rpost+ZA\nZload=Rload || ZbranchSlow\nC1=${C1} F (${v.lfC1} pF), C2=${C2} F (${v.lfC2} µF)\nRpost=${Rpost} Ω\nF_S(s)=Zload/(Rslow+Zload)\nRload=${RL} Ω, RPIout=${RpiOut} Ω\nC_eq(s)=F_F(s)+F_S(s) C_PI,eff(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n表示中のマーカー：緑=PMが最小のゲイン交差点 fc、橙=GMが最小の位相交差点 fpc。\n\n※追加ループ極性は、正のkφ・KFMとPI反転を明示したうえでのモデル上の符号です。実機の負帰還方向は小さな試験信号で確認してください。Loop Filterはユーザー説明に基づく受動RCネットワーク。出力負荷は高インピーダンスと仮定。負荷が有限なら、そのインピーダンスを追加してください。`;
 }
 function syncSliders(){ $('lfr1Number').value=String(Number($('lfr1').value)); $('lfPostNumber').value=String(Number($('lfPost').value)); }
-const bestProfileKey='laserFrequencyLockAnalyzer.bestProfile.v1';
-// Seed with the experimentally improved condition: C1=68 pF, C2=100 nF,
-// RF=340 Ω, with the previously tested PI values. This is a starting "best"
-// profile, not a claim of a mathematically proven global optimum.
+const bestProfileKey='laserFrequencyLockAnalyzer.bestProfile.v2';
+const legacyBestProfileKey='laserFrequencyLockAnalyzer.bestProfile.v1';
+// Starting profile based on the experimentally improved Fast-path condition; not a proven global optimum.
 const initialBestProfile={...defaults,lfr1:340,lfC1:68,lfC2:0.1,pir1:100,pir2:100,pic:10,ic1raux:50,ic1caux:300,piModel:'ic1'};
+function bestStatus(message,kind=''){
+ const el=$('bestStatus'); if(!el)return;
+ el.textContent=message; el.className='note'+(kind==='error'?' warning':'');
+ el.setAttribute('role','status'); el.setAttribute('aria-live','polite');
+}
+function bestStorage(){
+ try{const st=window.localStorage;const key='__lfa_storage_test__';st.setItem(key,'1');st.removeItem(key);return st;}
+ catch(err){return null;}
+}
+function normalizeBestProfile(raw){
+ if(!raw||typeof raw!=='object'||!raw.values||typeof raw.values!=='object')return null;
+ const values={...defaults,...raw.values};
+ ids.forEach(k=>{values[k]=Number(values[k]);});
+ if(!['ic1','simple'].includes(values.piModel||raw.values.piModel))return null;
+ values.piModel=values.piModel||raw.values.piModel;
+ const positive=['kphi','kfm','rser','pir1','pic','ic1raux','ic1caux','lfC1','lfr2','lfC2','lfc','lfrg','lfLoad','fmin','fmax'];
+ if(positive.some(k=>!Number.isFinite(values[k])||values[k]<=0))return null;
+ if(!Number.isFinite(values.lfr1)||values.lfr1<0||!Number.isFinite(values.lfPost)||values.lfPost<0||!Number.isFinite(values.piRout)||values.piRout<0||!Number.isFinite(values.pir2)||values.pir2<0||!Number.isFinite(values.tau)||values.tau<0)return null;
+ if(values.fmax<=values.fmin||!Number.isFinite(values.bumpLo)||!Number.isFinite(values.bumpHi)||values.bumpLo<=0||values.bumpHi<=values.bumpLo||!Number.isFinite(values.fcTarget)||values.fcTarget<0||!Number.isFinite(values.beatCarrier)||values.beatCarrier<=0||!Number.isFinite(values.ppd))return null;
+ return {values,updatedAt:raw.updatedAt||null};
+}
 function readBestProfile(){
- try{
-  const raw=localStorage.getItem(bestProfileKey);
-  if(!raw)return null;
-  const parsed=JSON.parse(raw);
-  if(!parsed||typeof parsed!=='object'||!parsed.values)return null;
-  return parsed;
- }catch(err){return null;}
+ const st=bestStorage(); if(!st)return {profile:null,error:'このブラウザーではローカル保存領域を利用できません。通常モードで開き直してください。'};
+ for(const key of [bestProfileKey,legacyBestProfileKey]){
+  try{const raw=st.getItem(key);if(!raw)continue;const parsed=normalizeBestProfile(JSON.parse(raw));if(parsed){if(key===legacyBestProfileKey){try{st.setItem(bestProfileKey,JSON.stringify(parsed));}catch(e){}}return {profile:parsed,error:null,migrated:key===legacyBestProfileKey};}}
+  catch(err){return {profile:null,error:'保存データを読み込めませんでした。保存内容が壊れている可能性があります。'};}
+ }
+ return {profile:null,error:null};
+}
+function setProfileValues(profile){
+ ids.forEach(k=>{const el=$(k);if(el&&profile[k]!==undefined)el.value=String(profile[k]);});
+ if($('piModel'))$('piModel').value=profile.piModel||'ic1';
+ syncSliders();
 }
 function applyBestProfile(){
- const saved=readBestProfile();
- const profile=saved&&saved.values?saved.values:initialBestProfile;
- ids.forEach(k=>{if(profile[k]!==undefined&&profile[k]!==null)$(k).value=String(profile[k]);});
- if(profile.piModel)$('piModel').value=profile.piModel;
- syncSliders();
+ const result=readBestProfile();
+ if(result.error){bestStatus(result.error,'error');return;}
+ const profile=result.profile||{values:initialBestProfile,updatedAt:null};
+ setProfileValues(profile.values);
  calculate();
- $('bestStatus').textContent=saved
-  ? '保存済みの最適値を読み込みました。保存日時：'+(saved.updatedAt||'記録なし')
-  : '実機でカウント改善を確認した初期候補を読み込みました（RF=340 Ω、C1=68 pF、C2=100 nF）。まだこのブラウザーに保存された更新値はありません。';
+ bestStatus(result.profile
+  ? '保存済みの最適値を読み込みました。保存日時：'+(profile.updatedAt||'記録なし')+(result.migrated?'（旧形式から引き継ぎ済み）':'')
+  : '初期候補を読み込みました（RF=340 Ω、C1=68 pF、C2=100 nF）。この候補は実験で改善した条件を基にした開始値で、全項目の最適性を保証するものではありません。');
 }
 function saveBestProfile(){
- const invalid=ids.filter(k=>$(k).value.trim()===''||!Number.isFinite(Number($(k).value)));
- if(invalid.length){alert('数値が未入力または不正な項目があります。入力値を確認してください。');return;}
- const values={};ids.forEach(k=>values[k]=Number($(k).value));
- values.piModel=$('piModel').value;
- const saved={values,updatedAt:new Date().toLocaleString('ja-JP')};
+ const st=bestStorage();
+ if(!st){bestStatus('保存できませんでした。このブラウザーではローカル保存が無効です。通常モードで開き直してください。','error');return;}
+ const values={};
+ ids.forEach(k=>{const el=$(k);values[k]=el?Number(el.value):NaN;});
+ values.piModel=$('piModel')?.value||'ic1';
+ const candidate=normalizeBestProfile({values,updatedAt:new Date().toLocaleString('ja-JP')});
+ if(!candidate){bestStatus('保存できません。入力値に空欄・不正値・範囲外の値がないか確認してください。','error');return;}
  try{
-  localStorage.setItem(bestProfileKey,JSON.stringify(saved));
-  $('bestStatus').textContent='現在の設定を最適値として保存しました。次回「最適値」を押すとこの設定を読み込みます。';
- }catch(err){
-  $('bestStatus').textContent='このブラウザーに保存できませんでした。プライベートブラウズや保存容量の設定を確認してください。';
- }
+  const payload=JSON.stringify(candidate);
+  st.setItem(bestProfileKey,payload);
+  const check=normalizeBestProfile(JSON.parse(st.getItem(bestProfileKey)||'null'));
+  if(!check)throw new Error('保存後の確認に失敗しました');
+  bestStatus('現在の全パラメータを保存しました。保存日時：'+candidate.updatedAt+'。次回「最適値」でこの値を読み込みます。');
+ }catch(err){bestStatus('保存に失敗しました。ブラウザーのプライベートモードやサイトデータの保存設定を確認してください。','error');}
 }
-$('bestApply').addEventListener('click',applyBestProfile);
-$('bestSave').addEventListener('click',saveBestProfile);
+const bestApplyButton=$('bestApply');
+const bestSaveButton=$('bestSave');
+if(bestApplyButton)bestApplyButton.addEventListener('click',event=>{event.preventDefault();applyBestProfile();});
+if(bestSaveButton)bestSaveButton.addEventListener('click',event=>{event.preventDefault();saveBestProfile();});
 $('calc').addEventListener('click',calculate);$('reset').addEventListener('click',()=>{ids.forEach(k=>$(k).value=defaults[k]);syncSliders();calculate();});ids.forEach(k=>$(k).addEventListener('change',()=>{syncSliders();calculate();}));['lfr1','lfPost'].forEach(k=>$(k).addEventListener('input',()=>{syncSliders();calculate();}));[['lfr1Number','lfr1',0,10000],['lfPostNumber','lfPost',0,100000]].forEach(([inputId,rangeId,min,max])=>$(inputId).addEventListener('change',()=>{const n=Number($(inputId).value);if(!Number.isFinite(n)||n<min||n>max){alert('抵抗値は'+min+'〜'+max+' Ωで入力してください。');syncSliders();return;}$ (rangeId).value=String(n);syncSliders();calculate();}));syncSliders();window.addEventListener('resize',()=>{if(window._resizeTimer)clearTimeout(window._resizeTimer);window._resizeTimer=setTimeout(calculate,120);});calculate();
 </script></body></html>
