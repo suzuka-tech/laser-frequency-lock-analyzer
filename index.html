@@ -139,7 +139,7 @@ button.secondary:active{
 <div class="metric"><span>PIコーナー周波数 f_PI</span><small class="guide">R2とCで決まるPIの折れ点</small><strong id="piCorner">—</strong></div>
 <div class="metric"><span>高周波側の比例ゲイン R2/R1</span><small class="guide">比例制御領域のゲイン（線形倍率）</small><strong id="piKp">—</strong></div>
 <div class="metric"><span>PIコーナーでのゲイン</span><small class="guide">高周波側の比例ゲインより正確に+3.01 dB（同じPI特性の別の読み方）</small><strong id="piAtCorner">—</strong></div>
-<div class="metric"><span>PIコーナー比 f_PI / fc</span><small class="guide">暫定設計目安：0.1〜0.2。fcが求まらない場合は評価できません。</small><div class="judge" id="piFcJudge">—</div><strong id="piFcRatio">—</strong></div>
+<div class="metric"><span>PIコーナー比 f_PI / fc（全体・参考）</span><small class="guide">単一PIループの初期目安は0.1〜0.2。ただし本モデルはFast/Slow並列経路のため、Fast側が支配するとこの比だけではPIを評価できません。</small><div class="judge" id="piFcJudge">—</div><strong id="piFcRatio">—</strong></div>
 <div class="metric"><span>fcでのPI位相寄与</span><small class="guide">基本PI式の位相 θ_PI(fc)=−tan⁻¹(f_PI/fc)。ループ全体の位相余裕ではありません。</small><strong id="piPhaseAtFc">—</strong></div>
 </div>
 <div class="plotgrid">
@@ -147,7 +147,7 @@ button.secondary:active{
 <section><div class="plot-title">PI位相 θ [deg]（図11の定義）</div><canvas id="piPhase"></canvas></section>
 </div>
 <p class="note">「高周波側の比例ゲイン R2/R1」は高周波で収束するゲイン、「PIコーナーでのゲイン」は f=f_PI での実際の値です。両者は別々に調整する指標ではなく、PIコーナーでの値は常に比例ゲインの √2 倍（+3.01 dB）です。</p>
-<p class="note warning">f_PI/fc の 0.1〜0.2 は位相遅れを抑えるための暫定的な初期設計目安で、普遍的な最適範囲ではありません。fcはモデル上のゲイン交差周波数です。また、この2図と比率評価は図11の基本PI式に基づき、IC1の追加入力RC枝は含みません。ループ全体のBode線図には、PIモデル選択が「IC1」の場合、その追加枝も含まれます。</p>
+<p class="note warning">f_PI/fc の 0.1〜0.2 は、PI枝がループを主に支配する単一PIループにおける暫定的な初期設計目安で、普遍的な最適範囲ではありません。本アプリは L=G(F_F+F_S C_PI)D の二経路モデルです。Fast側が支配する場合、全体fcとの比だけではPI枝の調整効果を評価できないため、上の「Fast / (Slow×PI)」寄与比も確認してください。また、この2図は図11の基本PI式に基づき、IC1の追加入力RC枝は含みません。ループ全体のBode線図には、PIモデル選択が「IC1」の場合、その追加枝も含まれます。</p>
 </section>
 <section style="margin-top:15px"><h2>伝達関数モデルと交差周波数</h2><pre id="equations"></pre><p class="note warning">Loop Filterは、Fast入力→(RF∥C1)→ノードA、ノードAから(RG+C2)直列枝でGNDへ、ノードA→既存CF→Rpost→出力、出力からRSを介してSlow側へ接続する受動ネットワークとしてモデル化しています。今回、出力負荷RloadとPI側直列出力抵抗RPIoutも含めています。既存の中央コンデンサCFとRpostはそのまま直列経路に残しています。Rload=1 MΩは仮の高インピーダンスです。RPIout=51 ΩはIC1出力→51 Ω→POLの経路がSlow端子へ接続される場合の直列抵抗として仮置きしています。POLとSlow端子の接続が異なる場合は0 Ωにしてください。Rload=1 MΩも未確認の仮定です。</p><p class="note">PI制御のIC1入力RC枝はLock circuit側の実回路図に基づくモデルです。IC2・IC3は今回の受動Loop Filterには含めていません。S=1/(1+L) は感度、T=L/(1+L) は相補感度です。どちらが測定されたバンプに対応するかは測定点とノイズ注入位置によります。</p><p class="note">G(s)=A/s、D(s)=e^(−sτ) の仮定は従来どおりです。今回のLoop Filterモデルは出力負荷を高インピーダンスとして扱っています。表示しているNyquistは正周波数側のみです。</p></section>
 <section style="margin-top:15px"><h2>実験・モデル照合の進め方（調整手順）</h2>
