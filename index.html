@@ -76,8 +76,8 @@ button.secondary:active{
 <div class="slider-field"><label for="lfPost">コンデンサ直後の可変抵抗 Rpost <span class="unit">0〜100,000 Ω</span></label><div class="slider-row"><input id="lfPost" class="range-input" type="range" min="0" max="100000" step="0.1" value="6.8"><input id="lfPostNumber" class="slider-number" type="number" min="0" max="100000" step="0.1" value="6.8" aria-label="Rpostの抵抗値（Ω）"></div><div class="range-scale"><span>0 Ω</span><span>100,000 Ω</span></div></div>
 <label>出力–Slow間抵抗 RS <span class="unit">Ω</span></label><input id="lfrg" type="number" step="any" value="1000">
 <label>出力負荷 Rload <span class="unit">kΩ</span></label><input id="lfLoad" type="number" step="any" value="1000">
-<label>PI側直列出力抵抗 R5 <span class="unit">Ω</span></label><input id="piRout" type="number" step="any" value="51">
-</div><p class="note">回路構成：Fast入力→（RF∥C1）→ノードA。ノードAから（RG＋C2）の直列枝でGNDへ接続。ノードA→既存の中央コンデンサCF→Rpost→出力。出力からRS=1 kΩを介してSlow入力側へ接続します。Rload=1 MΩ、R5=51 Ωは仮の初期値です。次段の実際の入力抵抗が分かれば置き換えてください。</p></section>
+<label>IC1出力〜POL間の直列抵抗 R5 <span class="unit">Ω</span></label><input id="piRout" type="number" step="any" value="51">
+</div><p class="note">回路構成：Fast入力→（RF∥C1）→ノードA。ノードAから（RG＋C2）の直列枝でGNDへ接続。ノードA→既存の中央コンデンサCF→Rpost→出力。出力からRS=1 kΩを介してSlow入力側へ接続します。Rload=1 MΩは未確認の仮定です。添付回路図ではIC1出力→R5=51 Ω→POL→R8=10 kΩ→IC2（R9=10 kΩの帰還）→R15=51 Ω→GAINの順に描かれています。POL・GAINの外部接続先と、IC2を含む実際のアクチュエータ経路は未確定なので、現在のR5入力は経路全体の近似にすぎません。</p></section>
 <section><h2>④ 計算範囲</h2><div class="fields">
 <label>基準ビート周波数 <span class="unit">MHz</span></label><input id="beatCarrier" type="number" value="30" step="any">
 <label>開始周波数 <span class="unit">Hz</span></label><input id="fmin" type="number" value="10">
@@ -112,16 +112,6 @@ button.secondary:active{
 <section><div class="plot-title">ループ全体の開ループゲイン |L(jω)| [dB]</div><canvas id="gain"></canvas></section>
 <section><div class="plot-title">ループ全体の開ループ位相 ∠L(jω) [deg]（unwrap）</div><canvas id="phase"></canvas></section>
 </div>
-<section style="margin-top:15px">
-<h2>C1・C2補償の有無によるループ全体の比較</h2>
-<p class="note">同じPI値・レーザーモデル・遅延・負荷条件で比較します。「補償なし」はC1とC2を開放（取り外し）し、RF・元のCF・Rpost・RSは残したモデルです。「補償あり」は入力したC1・C2を含む現在のLoop Filterモデルです。線の色は緑＝C1/C2あり、橙＝C1/C2なしです。</p>
-<pre id="compComparisonMetrics">比較計算中…</pre>
-<div class="plotgrid">
-<section><div class="plot-title">ループ全体ゲイン：C1・C2あり／なし [dB]</div><canvas id="compareGain"></canvas></section>
-<section><div class="plot-title">ループ全体位相：C1・C2あり／なし [deg]</div><canvas id="comparePhase"></canvas></section>
-</div>
-<p class="note warning">ここでの「C1・C2なし」は定義した回路モデル上の比較です。実機でC1/C2を外す際は回路図・配線を確認し、通電中に部品を変更しないでください。</p>
-</section>
 <h2>遅延・プラント・閉ループ特性の確認</h2>
 <div class="plotgrid">
 <section><div class="plot-title">Delay magnitude |D| [dB] vs ωτ</div><canvas id="delaymag"></canvas></section>
@@ -139,7 +129,7 @@ button.secondary:active{
 <div class="metric"><span>PIコーナー周波数 f_PI</span><small class="guide">R2とCで決まるPIの折れ点</small><strong id="piCorner">—</strong></div>
 <div class="metric"><span>高周波側の比例ゲイン R2/R1</span><small class="guide">比例制御領域のゲイン（線形倍率）</small><strong id="piKp">—</strong></div>
 <div class="metric"><span>PIコーナーでのゲイン</span><small class="guide">高周波側の比例ゲインより正確に+3.01 dB（同じPI特性の別の読み方）</small><strong id="piAtCorner">—</strong></div>
-<div class="metric"><span>PIコーナー比 f_PI / fc（全体・参考）</span><small class="guide">単一PIループの初期目安は0.1〜0.2。ただし本モデルはFast/Slow並列経路のため、Fast側が支配するとこの比だけではPIを評価できません。</small><div class="judge" id="piFcJudge">—</div><strong id="piFcRatio">—</strong></div>
+<div class="metric"><span>PIコーナー比 f_PI / fc（参考）</span><small class="guide">0.1〜0.2は単一PIループを想定した暫定目安。本モデルはFast/Slow並列経路のため、実際の経路接続・ゲインの確認が必要です。</small><div class="judge" id="piFcJudge">—</div><strong id="piFcRatio">—</strong></div>
 <div class="metric"><span>fcでのPI位相寄与</span><small class="guide">基本PI式の位相 θ_PI(fc)=−tan⁻¹(f_PI/fc)。ループ全体の位相余裕ではありません。</small><strong id="piPhaseAtFc">—</strong></div>
 </div>
 <div class="plotgrid">
@@ -147,7 +137,7 @@ button.secondary:active{
 <section><div class="plot-title">PI位相 θ [deg]（図11の定義）</div><canvas id="piPhase"></canvas></section>
 </div>
 <p class="note">「高周波側の比例ゲイン R2/R1」は高周波で収束するゲイン、「PIコーナーでのゲイン」は f=f_PI での実際の値です。両者は別々に調整する指標ではなく、PIコーナーでの値は常に比例ゲインの √2 倍（+3.01 dB）です。</p>
-<p class="note warning">f_PI/fc の 0.1〜0.2 は、PI枝がループを主に支配する単一PIループにおける暫定的な初期設計目安で、普遍的な最適範囲ではありません。本アプリは L=G(F_F+F_S C_PI)D の二経路モデルです。Fast側が支配する場合、全体fcとの比だけではPI枝の調整効果を評価できないため、上の「Fast / (Slow×PI)」寄与比も確認してください。また、この2図は図11の基本PI式に基づき、IC1の追加入力RC枝は含みません。ループ全体のBode線図には、PIモデル選択が「IC1」の場合、その追加枝も含まれます。</p>
+<p class="note warning">f_PI/fc の0.1〜0.2は単一PIループに対する暫定的な初期目安で、普遍的な最適範囲ではありません。本アプリはFast/Slowの二経路モデルですが、添付回路図のPOL・GAIN外部接続とIC2の動的負荷が未確認のため、経路の合成モデルには未確定部分があります。また、この2図は図11の基本PI式に基づき、IC1の追加入力RC枝は含みません。ループ全体のBode線図には、PIモデル選択が「IC1」の場合、その追加枝も含まれます。</p>
 </section>
 <section style="margin-top:15px"><h2>伝達関数モデルと交差周波数</h2><pre id="equations"></pre><p class="note warning">Loop Filterは、Fast入力→(RF∥C1)→ノードA、ノードAから(RG+C2)直列枝でGNDへ、ノードA→既存CF→Rpost→出力、出力からRSを介してSlow側へ接続する受動ネットワークとしてモデル化しています。今回、出力負荷RloadとPI側直列出力抵抗RPIoutも含めています。既存の中央コンデンサCFとRpostはそのまま直列経路に残しています。Rload=1 MΩは仮の高インピーダンスです。RPIout=51 ΩはIC1出力→51 Ω→POLの経路がSlow端子へ接続される場合の直列抵抗として仮置きしています。POLとSlow端子の接続が異なる場合は0 Ωにしてください。Rload=1 MΩも未確認の仮定です。</p><p class="note">PI制御のIC1入力RC枝はLock circuit側の実回路図に基づくモデルです。IC2・IC3は今回の受動Loop Filterには含めていません。S=1/(1+L) は感度、T=L/(1+L) は相補感度です。どちらが測定されたバンプに対応するかは測定点とノイズ注入位置によります。</p><p class="note">G(s)=A/s、D(s)=e^(−sτ) の仮定は従来どおりです。今回のLoop Filterモデルは出力負荷を高インピーダンスとして扱っています。表示しているNyquistは正周波数側のみです。</p></section>
 <section style="margin-top:15px"><h2>実験・モデル照合の進め方（調整手順）</h2>
@@ -207,21 +197,11 @@ function draw(id,x,y,opt={}){
  // Horizontal and vertical reference lines
  (opt.xLines||[]).forEach(line=>{if(line.x<xmin||line.x>xmax)return;ctx.save();ctx.setLineDash(line.dash||[5,4]);ctx.strokeStyle=line.color||"#ffbc6b";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(X(line.x),top);ctx.lineTo(X(line.x),h-bottom);ctx.stroke();ctx.setLineDash([]);if(line.label){ctx.fillStyle=line.color||"#ffbc6b";ctx.font="11px system-ui";ctx.textAlign="left";ctx.textBaseline="top";ctx.fillText(line.label,Math.min(w-right-64,X(line.x)+4),top+3+(line.labelOffset||0));}ctx.restore();});
  (opt.yLines||[]).forEach(line=>{if(line.y<ymin||line.y>ymax)return;ctx.save();ctx.setLineDash(line.dash||[5,4]);ctx.strokeStyle=line.color||"#ffbc6b";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(left,Y(line.y));ctx.lineTo(w-right,Y(line.y));ctx.stroke();ctx.setLineDash([]);if(line.label){ctx.fillStyle=line.color||"#ffbc6b";ctx.font="11px system-ui";ctx.textAlign="right";ctx.textBaseline="bottom";ctx.fillText(line.label,w-right-3,Y(line.y)-3);}ctx.restore();});
- // Primary and optional comparison curves.
- const curveSeries=[{x,y,color:opt.curveColor||"#79a8ff",dash:opt.curveDash||[],label:opt.curveLabel||""},...(opt.extraCurves||[])];
- ctx.save();ctx.beginPath();ctx.rect(left,top,pw,ph);ctx.clip();
- curveSeries.forEach(series=>{
-  const sx=series.x||x,sy=series.y||[];
-  ctx.strokeStyle=series.color||"#79a8ff";ctx.lineWidth=2.2;ctx.setLineDash(series.dash||[]);
-  ctx.beginPath();let begun=false;
-  for(let i=0;i<sx.length;i++){if(!Number.isFinite(sx[i])||!Number.isFinite(sy[i]))continue;const px=X(sx[i]),py=Y(sy[i]);if(!begun){ctx.moveTo(px,py);begun=true;}else ctx.lineTo(px,py);}
-  ctx.stroke();
- });
- ctx.setLineDash([]);
- if(opt.direction){[.25,.5,.75].forEach(q=>{const i=Math.max(0,Math.min(x.length-2,Math.floor((x.length-2)*q))),x1=X(x[i]),y1=Y(y[i]),x2=X(x[i+1]),y2=Y(y[i+1]);if([x1,y1,x2,y2].every(Number.isFinite)&&x2>=left&&x2<=w-right&&y2>=top&&y2<=h-bottom){const a=Math.atan2(y2-y1,x2-x1),len=9;ctx.fillStyle="#ffbc6b";ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-len*Math.cos(a-.55),y2-len*Math.sin(a-.55));ctx.lineTo(x2-len*Math.cos(a+.55),y2-len*Math.sin(a+.55));ctx.closePath();ctx.fill();}});}
+ // Data curve
+ ctx.save();ctx.beginPath();ctx.rect(left,top,pw,ph);ctx.clip();ctx.strokeStyle="#79a8ff";ctx.lineWidth=2.2;ctx.beginPath();let begun=false;
+ for(let i=0;i<x.length;i++){if(!Number.isFinite(x[i])||!Number.isFinite(y[i]))continue;const px=X(x[i]),py=Y(y[i]);if(!begun){ctx.moveTo(px,py);begun=true;}else ctx.lineTo(px,py);}ctx.stroke();
+ if(opt.direction){[.25,.5,.75].forEach(q=>{const i=Math.max(0,Math.min(x.length-2,Math.floor((x.length-2)*q))),x1=X(x[i]),y1=Y(x[i]),x2=X(x[i+1]),y2=Y(x[i+1]);if([x1,y1,x2,y2].every(Number.isFinite)&&x2>=left&&x2<=w-right&&y2>=top&&y2<=h-bottom){const a=Math.atan2(y2-y1,x2-x1),len=9;ctx.fillStyle="#ffbc6b";ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-len*Math.cos(a-.55),y2-len*Math.sin(a-.55));ctx.lineTo(x2-len*Math.cos(a+.55),y2-len*Math.sin(a+.55));ctx.closePath();ctx.fill();}});}
  ctx.restore();
- const legendSeries=curveSeries.filter(q=>q.label);
- if(legendSeries.length){let lx=left+8,ly=top+7;ctx.save();ctx.font="11px system-ui";ctx.textBaseline="middle";legendSeries.forEach(series=>{ctx.strokeStyle=series.color||"#79a8ff";ctx.lineWidth=2.5;ctx.setLineDash(series.dash||[]);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx+18,ly);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="#dce6f7";ctx.textAlign="left";ctx.fillText(series.label,lx+23,ly);lx+=ctx.measureText(series.label).width+43;});ctx.restore();}
  // Legacy single marker
  if(opt.marker){const px=X(opt.marker[0]),py=Y(opt.marker[1]);if(px>=left&&px<=w-right&&py>=top&&py<=h-bottom){ctx.fillStyle="#ff6666";ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();ctx.font="12px system-ui";ctx.textAlign="left";ctx.textBaseline="bottom";ctx.fillText("−1",px+8,py-6);}}
  // Named markers, used for gain/phase crossovers and Nyquist points
@@ -237,30 +217,18 @@ function calculate(){
  const positive=['kphi','kfm','rser','pir1','pic','ic1raux','ic1caux','lfC1','lfr2','lfC2','lfc','lfrg','lfLoad','fmin','fmax'];if(positive.some(k=>!Number.isFinite(v[k])||v[k]<=0)||!Number.isFinite(v.lfr1)||v.lfr1<0||!Number.isFinite(v.lfPost)||v.lfPost<0||!Number.isFinite(v.piRout)||v.piRout<0||!Number.isFinite(v.pir2)||v.pir2<0||!Number.isFinite(v.tau)||v.tau<0||v.fmax<=v.fmin||!Number.isFinite(v.bumpLo)||!Number.isFinite(v.bumpHi)||v.bumpLo<=0||v.bumpHi<=v.bumpLo||!Number.isFinite(v.fcTarget)||v.fcTarget<0||!Number.isFinite(v.beatCarrier)||v.beatCarrier<=0){alert('入力値を確認してください。RF・Rpostは0以上、その他の容量・周波数・指定した抵抗は正の値（τとPIのR2は0以上）にしてください。');return;}
  const tau=v.tau*1e-9,Rpi=v.pir1*1e3,Cpi=v.pic*1e-9,Raux=v.ic1raux*1e3,Caux=v.ic1caux*1e-12,Rf=v.lfr1,C1=v.lfC1*1e-12,Rg=v.lfr2,C2=v.lfC2*1e-6,Cf=v.lfc*1e-9,Rpost=v.lfPost,Rs=v.lfrg,RL=v.lfLoad*1e3,RpiOut=v.piRout,A=2*Math.PI*v.kfm*v.kphi/v.rser,piModel=$('piModel').value;
  const ppd=Math.max(20,Math.min(200,Math.round(v.ppd)||50)),N=Math.min(6000,Math.ceil(Math.log10(v.fmax/v.fmin)*ppd)+1);const f=[],warr=[],L=[],rawPhase=[];
- function evaluate(w,includeC1C2=true){
- const Zc=[0,-1/(w*Cf)],Rload=[RL,0],RslowSource=[Rs+RpiOut,0],Rfast=[Rf,0];
- const ZoutFast=parallel(Rload,RslowSource),Zbranch=add(add(Zc,[Rpost,0]),ZoutFast);
- let Ff,Fs;
- if(includeC1C2){
-  const Zc1=[0,-1/(w*C1)],Zc2=[0,-1/(w*C2)],Zfast=parallel(Rfast,Zc1),Zshunt=add([Rg,0],Zc2);
-  const Zeq=parallel(Zshunt,Zbranch);
-  Ff=mul(div(Zeq,add(Zfast,Zeq)),div(ZoutFast,Zbranch));
-  const ZA=parallel(Zfast,Zshunt),ZbranchSlow=add(add(Zc,[Rpost,0]),ZA),Zload=parallel(Rload,ZbranchSlow);
-  Fs=div(Zload,add(RslowSource,Zload));
- }else{
-  // Baseline: C1 and C2 are removed (open circuits); RF and the original CF/Rpost/RS network remain.
-  Ff=div(ZoutFast,add(Rfast,Zbranch));
-  const ZbranchSlow=add(add(Zc,[Rpost,0]),Rfast),Zload=parallel(Rload,ZbranchSlow);
-  Fs=div(Zload,add(RslowSource,Zload));
- }
+ function evaluate(w){
+ const Zc=[0,-1/(w*Cf)],Zc1=[0,-1/(w*C1)],Zc2=[0,-1/(w*C2)],Rload=[RL,0],RslowSource=[Rs+RpiOut,0],Rfast=[Rf,0],Zfast=parallel(Rfast,Zc1),Zshunt=add([Rg,0],Zc2);
+ const ZoutFast=parallel(Rload,RslowSource),Zbranch=add(add(Zc,[Rpost,0]),ZoutFast),Zeq=parallel(Zshunt,Zbranch);
+ const Ff=mul(div(Zeq,add(Zfast,Zeq)),div(ZoutFast,Zbranch));
+ const ZA=parallel(Zfast,Zshunt),ZbranchSlow=add(add(Zc,[Rpost,0]),ZA),Zload=parallel(Rload,ZbranchSlow),Fs=div(Zload,add(RslowSource,Zload));
  const Zfb=[v.pir2,-1/(w*Cpi)];let Yin=[1/Rpi,0];
  if(piModel==='ic1'){const q=w*Raux*Caux,qd=1+q*q;const Yaux=[(w*w*Raux*Caux*Caux)/qd,(w*Caux)/qd];Yin=add(Yin,Yaux);}
  const Cpiw=mul(mul(Zfb,Yin),[-1,0]),Ceq=add(Ff,mul(Fs,Cpiw)),G=[0,-A/w],D=[Math.cos(w*tau),-Math.sin(w*tau)];
- return{G,Ff,Fs,Cpi:Cpiw,L:mul(mul(mul(G,Ceq),D),[Number(v.pol),0])};
+ return{G,L:mul(mul(mul(G,Ceq),D),[Number(v.pol),0])};
  }
+
  for(let i=0;i<N;i++){const ff=v.fmin*Math.pow(v.fmax/v.fmin,i/(N-1)),ww=2*Math.PI*ff,z=evaluate(ww);f.push(ff);warr.push(ww);L.push(z.L);rawPhase.push(deg(z.L));}
- const LwithoutC1C2=warr.map(w=>evaluate(w,false).L);
- const gainWithoutC1C2=LwithoutC1C2.map(db),phaseWithoutC1C2=unwrap(LwithoutC1C2.map(deg));
  const gain=L.map(db),phase=unwrap(rawPhase),gainCross=interpolateCross(f,gain,0),phaseCrossEvents=[];
  const S=L.map(z=>div([1,0],[1+z[0],z[1]])),T=L.map(z=>div(z,[1+z[0],z[1]]));
  const sDb=S.map(db),tDb=T.map(db);
@@ -303,31 +271,10 @@ function calculate(){
  const pms=gainCross.map(fc=>{const phaseAt=interpAtLog(f,phase,fc),target=-180+360*Math.round((phaseAt+180)/360);return{fc,phaseAt,target,pm:phaseAt-target};});
  const gms=phaseCrossEvents.map(e=>({fpc:e.fpc,target:e.target,gainAt:interpAtLog(f,gain,e.fpc),gm:-interpAtLog(f,gain,e.fpc)}));
  const worstPM=pms.length?pms.reduce((a,b)=>b.pm<a.pm?b:a):null;
- function summarizeLoop(loopValues){
-  const g=loopValues.map(db),ph=unwrap(loopValues.map(deg)),crossings=interpolateCross(f,g,0);
-  const pmsLocal=crossings.map(fc=>{const phaseAt=interpAtLog(f,ph,fc),target=-180+360*Math.round((phaseAt+180)/360);return{fc,pm:phaseAt-target};});
-  const events=[];
-  for(let k=-60;k<=60;k++){const target=-180+360*k;interpolateCross(f,ph,target).forEach(fp=>events.push({fp,target}));}
-  const gmsLocal=events.map(e=>({fp:e.fp,gm:-interpAtLog(f,g,e.fp)}));
-  const Slocal=loopValues.map(z=>div([1,0],[1+z[0],z[1]])),Tlocal=loopValues.map(z=>div(z,[1+z[0],z[1]]));
-  const ms=Math.max(...Slocal.map(abs)),mt=Math.max(...Tlocal.map(abs));
-  const pmBest=pmsLocal.length?pmsLocal.reduce((a,b)=>b.pm<a.pm?b:a):null;
-  const gmBest=gmsLocal.length?gmsLocal.reduce((a,b)=>b.gm<a.gm?b:a):null;
-  return{fc:pmBest?.fc??null,pm:pmBest?.pm??null,gm:gmBest?.gm??null,ms,mt};
- }
- const noCompSummary=summarizeLoop(LwithoutC1C2),withCompSummary=summarizeLoop(L);
- const metricLine=(name,m)=>name+'\n  fc: '+(m.fc?fmt(m.fc,'Hz'):'交差なし')+' / PM: '+(m.pm!==null?m.pm.toFixed(2)+'°':'—')+' / GM: '+(m.gm!==null?m.gm.toFixed(2)+' dB':'—')+'\n  Ms: '+m.ms.toFixed(3)+' / Mt: '+m.mt.toFixed(3);
- $('compComparisonMetrics').textContent=metricLine('C1・C2なし（開放）',noCompSummary)+'\n\n'+metricLine('C1・C2あり（入力値）',withCompSummary);
  const pmsOpp=gainCross.map(fc=>{const phaseAt=interpAtLog(f,phase,fc)+180,target=-180+360*Math.round((phaseAt+180)/360);return{fc,phaseAt,target,pm:phaseAt-target};});
  const worstPMOpp=pmsOpp.length?pmsOpp.reduce((a,b)=>b.pm<a.pm?b:a):null;
  const worstGM=gms.length?gms.reduce((a,b)=>b.gm<a.gm?b:a):null;
  const fcDisplay=worstPM?.fc??gainCross[0]??null,fpcDisplay=worstGM?.fpc??phaseCrossEvents[0]?.fpc??null;
- const fcDetail=fcDisplay?evaluate(2*Math.PI*fcDisplay,true):null;
- if(fcDetail){
-  const fastContribution=abs(fcDetail.Ff),slowContribution=abs(mul(fcDetail.Fs,fcDetail.Cpi));
-  const contributionRatio=fastContribution/Math.max(slowContribution,1e-300);
-  $('compComparisonMetrics').textContent+='\n\n現在のfcにおける経路寄与（振幅）\n  Fast側 |F_F| = '+fastContribution.toPrecision(4)+'\n  Slow×PI側 |F_S C_PI| = '+slowContribution.toPrecision(4)+'\n  Fast / (Slow×PI) = '+contributionRatio.toFixed(1)+' 倍';
- }
  $('fc').textContent=fcDisplay?fmt(fcDisplay,'Hz'):'交差なし';$('pm').textContent=worstPM?fmt(worstPM.pm,'°'):'交差なし';$('pmOpposite').textContent=worstPMOpp?'逆極性なら PM '+fmt(worstPMOpp.pm,'°')+'（fc '+fmt(worstPMOpp.fc,'Hz')+'）':'逆極性：交差なし';$('fpc').textContent=fpcDisplay?fmt(fpcDisplay,'Hz'):'交差なし';$('gm').textContent=worstGM?fmt(worstGM.gm,'dB'):'交差なし';
  function judge(id,text,kind){const el=$(id);el.textContent=text;el.className='judge '+(kind||'');}
  if(v.fcTarget<=0)judge('fcJudge','目標未設定：抑圧したい帯域から設定','warn');
@@ -390,8 +337,6 @@ function calculate(){
  const piCornerLines=piCornerInRange?[{x:Math.log10(piCornerHz),color:"#ffbc6b",label:"PIコーナー"}]:[];
  draw('piGain',logf,piGainDb,{ylabel:'PIゲイン |G_PI(jω)| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:"#e5ad55",label:"0 dB"}],xLines:piCornerLines});
  draw('piPhase',logf,piPhaseDeg,{ylabel:'PI位相 θ [deg]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:"#e5ad55",label:"0°"}],xLines:piCornerLines});
- draw('compareGain',logf,gain,{ylabel:'ループ全体ゲイン |L(jω)| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',curveColor:'#5bd6ac',curveLabel:'C1・C2あり',extraCurves:[{y:gainWithoutC1C2,color:'#ffbc6b',label:'C1・C2なし'}],yLines:[{y:0,color:'#e5ad55',label:'0 dB'}]});
- draw('comparePhase',logf,phase,{ylabel:'ループ全体位相 ∠L(jω) [deg]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',curveColor:'#5bd6ac',curveLabel:'C1・C2あり',extraCurves:[{y:phaseWithoutC1C2,color:'#ffbc6b',label:'C1・C2なし'}],yLines:[{y:0,color:'#e5ad55',label:'0°'}]});
  draw('gain',logf,gain,{ylabel:'開ループゲイン |L(jω)| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:"#e5ad55",label:"0 dB"}],xLines:[...(fcDisplay?[{x:Math.log10(fcDisplay),color:"#5bd6ac",label:"fc"}]:[]),...(fpcDisplay?[{x:Math.log10(fpcDisplay),color:"#ffbc6b",label:"fpc",labelOffset:15}]:[])],markers:gainMarkers,verticalBrackets:gainGMBrackets});
  draw('phase',logf,phase,{ylabel:'開ループ位相 ∠L(jω) [deg]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[...(worstPM?[{y:worstPM.target,color:"#e5ad55",label:axisNumber(worstPM.target)+"°"}]:[])],xLines:[...(fcDisplay?[{x:Math.log10(fcDisplay),color:"#5bd6ac",label:"fc"}]:[]),...(fpcDisplay?[{x:Math.log10(fpcDisplay),color:"#ffbc6b",label:"fpc",labelOffset:15}]:[])],markers:phaseMarkers,verticalBrackets:phasePMBrackets});
  draw('delaymag',wt,wt.map(()=>0),{ylabel:'遅延振幅 |D(jω)| [dB]',xlabel:'正規化角周波数 ωτ [rad]',xmin:0,ymin:-1,ymax:1});
@@ -403,7 +348,7 @@ function calculate(){
  draw('sensitivity',logf,sDb,{ylabel:'感度 |S| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:'#e5ad55',label:'0 dB'}],xLines:[{x:Math.log10(bandLo),color:'#ffbc6b',label:'実測帯域下限'},{x:Math.log10(bandHi),color:'#ffbc6b',label:'実測帯域上限',labelOffset:14}],markers:sBand?[{x:Math.log10(sBand.f),y:sBand.db,color:'#ffbc6b',shape:'diamond',label:'band max'}]:[]});
  draw('complementary',logf,tDb,{ylabel:'相補感度 |T| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:'#e5ad55',label:'0 dB'}],xLines:[{x:Math.log10(bandLo),color:'#ffbc6b',label:'実測帯域下限'},{x:Math.log10(bandHi),color:'#ffbc6b',label:'実測帯域上限',labelOffset:14}],markers:tBand?[{x:Math.log10(tBand.f),y:tBand.db,color:'#ffbc6b',shape:'diamond',label:'band max'}]:[]});
  const allPM=pms.length?pms.map(p=>`${p.fc.toPrecision(5)} Hz : ${p.pm.toFixed(3)}°`).join('\n'):'なし';const allGM=gms.length?gms.map(g=>`${g.fpc.toPrecision(5)} Hz : ${g.gm.toFixed(3)} dB`).join('\n'):'なし';
- $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nPI model: ${piModel==='ic1'?'Step 2: IC1 input RC included':'Step 1: basic PI'}\nZfb(s) = R2_PI + 1/(s C_PI)\nYin(s) = 1/R1_PI ${piModel==='ic1'?'+ s Caux/(1+s Raux Caux)':''}\nC_PI,eff(s) = −Zfb(s) Yin(s)\nR1_PI=${Rpi} Ω, R2_PI=${v.pir2} Ω, C_PI=${Cpi} F\nAux branch: Raux=${Raux} Ω, Caux=${Caux} F\n\nS(s)=1/(1+L(s)); T(s)=L(s)/(1+L(s))\nBeat carrier = ${v.beatCarrier} MHz (lock setpoint); plotted f is modulation/offset frequency around the lock point.\nMeasured bump comparison band: ${bandLo}–${bandHi} Hz\nZC1(s)=1/(s C1), ZRF=RF || ZC1\nZC2(s)=1/(s C2), Zshunt=RG+ZC2 (series branch to GND)\nZC(s)=1/(s CF), Rslow=RS+RPIout\nZoutFast=Rload || Rslow\nZbranch=ZC+Rpost+ZoutFast\nZeq=Zshunt || Zbranch\nF_F(s)=[Zeq/(ZRF+Zeq)] [ZoutFast/Zbranch]\nZA=ZRF || Zshunt, ZbranchSlow=ZC+Rpost+ZA\nZload=Rload || ZbranchSlow\nC1=${C1} F (${v.lfC1} pF), C2=${C2} F (${v.lfC2} µF)\nRpost=${Rpost} Ω\nF_S(s)=Zload/(Rslow+Zload)\nRload=${RL} Ω, RPIout=${RpiOut} Ω\nC_eq(s)=F_F(s)+F_S(s) C_PI,eff(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n表示中のマーカー：緑=PMが最小のゲイン交差点 fc、橙=GMが最小の位相交差点 fpc。\n\n※追加ループ極性は、正のkφ・KFMとPI反転を明示したうえでのモデル上の符号です。実機の負帰還方向は小さな試験信号で確認してください。Loop Filterはユーザー説明に基づく受動RCネットワーク。出力負荷は高インピーダンスと仮定。負荷が有限なら、そのインピーダンスを追加してください。`;
+ $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nPI model: ${piModel==='ic1'?'Step 2: IC1 input RC included':'Step 1: basic PI'}\nZfb(s) = R2_PI + 1/(s C_PI)\nYin(s) = 1/R1_PI ${piModel==='ic1'?'+ s Caux/(1+s Raux Caux)':''}\nC_PI,eff(s) = −Zfb(s) Yin(s)\nR1_PI=${Rpi} Ω, R2_PI=${v.pir2} Ω, C_PI=${Cpi} F\nAux branch: Raux=${Raux} Ω, Caux=${Caux} F\n\nS(s)=1/(1+L(s)); T(s)=L(s)/(1+L(s))\nBeat carrier = ${v.beatCarrier} MHz (lock setpoint); plotted f is modulation/offset frequency around the lock point.\nMeasured bump comparison band: ${bandLo}–${bandHi} Hz\nZC1(s)=1/(s C1), ZRF=RF || ZC1\nZC2(s)=1/(s C2), Zshunt=RG+ZC2 (series branch to GND)\nZC(s)=1/(s CF), Rslow=RS+RPIout\nZoutFast=Rload || Rslow\nZbranch=ZC+Rpost+ZoutFast\nZeq=Zshunt || Zbranch\nF_F(s)=[Zeq/(ZRF+Zeq)] [ZoutFast/Zbranch]\nZA=ZRF || Zshunt, ZbranchSlow=ZC+Rpost+ZA\nZload=Rload || ZbranchSlow\nC1=${C1} F (${v.lfC1} pF), C2=${C2} F (${v.lfC2} µF)\nRpost=${Rpost} Ω\nF_S(s)=Zload/(Rslow+Zload)\nRload=${RL} Ω, R5 (IC1→POL)=${RpiOut} Ω (partial model only; IC2/R8/R9/R15 and external wiring not fully represented)\nC_eq(s)=F_F(s)+F_S(s) C_PI,eff(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n表示中のマーカー：緑=PMが最小のゲイン交差点 fc、橙=GMが最小の位相交差点 fpc。\n\n※追加ループ極性は、正のkφ・KFMとPI反転を明示したうえでのモデル上の符号です。実機の負帰還方向は小さな試験信号で確認してください。Loop Filterはユーザー説明に基づく受動RCネットワーク。出力負荷は高インピーダンスと仮定。負荷が有限なら、そのインピーダンスを追加してください。`;
 }
 function syncSliders(){ $('lfr1Number').value=String(Number($('lfr1').value)); $('lfPostNumber').value=String(Number($('lfPost').value)); }
 const bestProfileKey='laserFrequencyLockAnalyzer.bestProfile.v2';
