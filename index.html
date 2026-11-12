@@ -256,7 +256,7 @@ function calculate(){
  const Zfb=[v.pir2,-1/(w*Cpi)];let Yin=[1/Rpi,0];
  if(piModel==='ic1'){const q=w*Raux*Caux,qd=1+q*q;const Yaux=[(w*w*Raux*Caux*Caux)/qd,(w*Caux)/qd];Yin=add(Yin,Yaux);}
  const Cpiw=mul(mul(Zfb,Yin),[-1,0]),Ceq=add(Ff,mul(Fs,Cpiw)),G=[0,-A/w],D=[Math.cos(w*tau),-Math.sin(w*tau)];
- return{G,L:mul(mul(mul(G,Ceq),D),[Number(v.pol),0])};
+ return{G,Ff,Fs,Cpi:Cpiw,L:mul(mul(mul(G,Ceq),D),[Number(v.pol),0])};
  }
  for(let i=0;i<N;i++){const ff=v.fmin*Math.pow(v.fmax/v.fmin,i/(N-1)),ww=2*Math.PI*ff,z=evaluate(ww);f.push(ff);warr.push(ww);L.push(z.L);rawPhase.push(deg(z.L));}
  const LwithoutC1C2=warr.map(w=>evaluate(w,false).L);
@@ -322,6 +322,12 @@ function calculate(){
  const worstPMOpp=pmsOpp.length?pmsOpp.reduce((a,b)=>b.pm<a.pm?b:a):null;
  const worstGM=gms.length?gms.reduce((a,b)=>b.gm<a.gm?b:a):null;
  const fcDisplay=worstPM?.fc??gainCross[0]??null,fpcDisplay=worstGM?.fpc??phaseCrossEvents[0]?.fpc??null;
+ const fcDetail=fcDisplay?evaluate(2*Math.PI*fcDisplay,true):null;
+ if(fcDetail){
+  const fastContribution=abs(fcDetail.Ff),slowContribution=abs(mul(fcDetail.Fs,fcDetail.Cpi));
+  const contributionRatio=fastContribution/Math.max(slowContribution,1e-300);
+  $('compComparisonMetrics').textContent+='\n\n現在のfcにおける経路寄与（振幅）\n  Fast側 |F_F| = '+fastContribution.toPrecision(4)+'\n  Slow×PI側 |F_S C_PI| = '+slowContribution.toPrecision(4)+'\n  Fast / (Slow×PI) = '+contributionRatio.toFixed(1)+' 倍';
+ }
  $('fc').textContent=fcDisplay?fmt(fcDisplay,'Hz'):'交差なし';$('pm').textContent=worstPM?fmt(worstPM.pm,'°'):'交差なし';$('pmOpposite').textContent=worstPMOpp?'逆極性なら PM '+fmt(worstPMOpp.pm,'°')+'（fc '+fmt(worstPMOpp.fc,'Hz')+'）':'逆極性：交差なし';$('fpc').textContent=fpcDisplay?fmt(fpcDisplay,'Hz'):'交差なし';$('gm').textContent=worstGM?fmt(worstGM.gm,'dB'):'交差なし';
  function judge(id,text,kind){const el=$(id);el.textContent=text;el.className='judge '+(kind||'');}
  if(v.fcTarget<=0)judge('fcJudge','目標未設定：抑圧したい帯域から設定','warn');
