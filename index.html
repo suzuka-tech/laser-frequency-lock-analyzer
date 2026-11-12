@@ -106,9 +106,14 @@ button.secondary:active{
 <div class="metric"><span>受動LFの保守的な上限</span><small class="guide">F_F・F_Sの伝達率をそれぞれ最大1と仮定した上限。実回路で同時に達成できる値とは限らない。</small><strong id="passiveLimit">—</strong></div>
 <div class="metric"><span>モデル構造による不足分</span><small class="guide">受動LFの理論上限でも0 dBに届かない分。実回路の増幅段やプラントモデルの再確認が必要。</small><strong id="modelGap">—</strong></div>
 </section>
+<h2>ループ全体のボード線図</h2>
+<p class="note">Fast経路・Slow経路（PI制御器を含む）・レーザー応答モデル・遅延を合成した開ループ伝達関数 L(jω) のゲインと位相です。横軸は30 MHzのロック点そのものではなく、ロック点周りの周波数変動・変調の周波数です。</p>
 <div class="plotgrid">
-<section><div class="plot-title">Open-loop gain |L(jω)| [dB]（横軸：30 MHzロック点周りの変動周波数）</div><canvas id="gain"></canvas></section>
-<section><div class="plot-title">Open-loop phase ∠L(jω) [deg]（unwrap）</div><canvas id="phase"></canvas></section>
+<section><div class="plot-title">ループ全体の開ループゲイン |L(jω)| [dB]</div><canvas id="gain"></canvas></section>
+<section><div class="plot-title">ループ全体の開ループ位相 ∠L(jω) [deg]（unwrap）</div><canvas id="phase"></canvas></section>
+</div>
+<h2>遅延・プラント・閉ループ特性の確認</h2>
+<div class="plotgrid">
 <section><div class="plot-title">Delay magnitude |D| [dB] vs ωτ</div><canvas id="delaymag"></canvas></section>
 <section><div class="plot-title">Delay phase ∠D(jω) [deg] vs ωτ</div><canvas id="delayphase"></canvas></section>
 <section><div class="plot-title">Phase of G(s) vs ωτ</div><canvas id="plantphase"></canvas></section>
@@ -118,17 +123,23 @@ button.secondary:active{
 <section><div class="plot-title">Step 3：相補感度 |T| [dB]（30 MHzロック点周りの変動周波数）</div><canvas id="complementary"></canvas></section>
 </div>
 <section style="margin-top:15px">
-<h2>Fast経路単体のボード線図</h2>
-<p class="note">Fast入力からLoop Filter出力までの受動回路特性です。RF∥C1、RG+C2（直列接地枝）、中央CF、Rpost、出力からSlow端子へのRSを含みます。Fast経路の伝達関数を求めるため、独立したSlow側PI出力は0 V（AC GND）とし、RSで終端します。外部レーザー負荷RloadとRPIoutはこの2つのグラフには含めません。C1・C2・RF・RG・CF・Rpost・RSを変更すると自動更新されます。</p>
-<div class="plotgrid">
-<section><div class="plot-title">Fast経路ゲイン |H_F(jω)| [dB]</div><canvas id="fastgain"></canvas></section>
-<section><div class="plot-title">Fast経路位相 ∠H_F(jω) [deg]（unwrap）</div><canvas id="fastphase"></canvas></section>
+<h2>PI制御器単体のボード線図（図11の基本PI式）</h2>
+<p class="note">画像の式に従い、G_PI(jω)=−(R2+1/(jωC))/R1 のゲインと位相を表示します。ゲインは |G_PI|=(R2/R1)√[1+(1/(ωR2C))²]、位相は θ=−tan⁻¹[1/(ωR2C)] です。反転符号そのものによる180°は、図11の位相表記に合わせてこの単体グラフでは除外しています。PIコーナー周波数 f_PI=1/(2πR2C) は、積分動作から比例動作への切り替わりの目安です。</p>
+<div class="metric-grid">
+<div class="metric"><span>PIコーナー周波数 f_PI</span><small class="guide">R2とCで決まるPIの折れ点</small><strong id="piCorner">—</strong></div>
+<div class="metric"><span>高周波側の比例ゲイン R2/R1</span><small class="guide">比例制御領域のゲイン（線形倍率）</small><strong id="piKp">—</strong></div>
+<div class="metric"><span>PIコーナーでのゲイン</span><small class="guide">高周波側の比例ゲインに対して約+3.01 dB</small><strong id="piAtCorner">—</strong></div>
 </div>
+<div class="plotgrid">
+<section><div class="plot-title">PIゲイン |G_PI(jω)| [dB]</div><canvas id="piGain"></canvas></section>
+<section><div class="plot-title">PI位相 θ [deg]（図11の定義）</div><canvas id="piPhase"></canvas></section>
+</div>
+<p class="note warning">この2図は図11の基本PI式だけを表示し、IC1モデルの追加入力RC枝（Raux・Caux）は含みません。一方、ループ全体の開ループBode線図には、PIモデル選択が「IC1」の場合、その追加入力RC枝も含まれます。</p>
 </section>
 <section style="margin-top:15px"><h2>伝達関数モデルと交差周波数</h2><pre id="equations"></pre><p class="note warning">Loop Filterは、Fast入力→(RF∥C1)→ノードA、ノードAから(RG+C2)直列枝でGNDへ、ノードA→既存CF→Rpost→出力、出力からRSを介してSlow側へ接続する受動ネットワークとしてモデル化しています。今回、出力負荷RloadとPI側直列出力抵抗RPIoutも含めています。既存の中央コンデンサCFとRpostはそのまま直列経路に残しています。Rload=1 MΩは仮の高インピーダンスです。RPIout=51 ΩはIC1出力→51 Ω→POLの経路がSlow端子へ接続される場合の直列抵抗として仮置きしています。POLとSlow端子の接続が異なる場合は0 Ωにしてください。Rload=1 MΩも未確認の仮定です。</p><p class="note">PI制御のIC1入力RC枝はLock circuit側の実回路図に基づくモデルです。IC2・IC3は今回の受動Loop Filterには含めていません。S=1/(1+L) は感度、T=L/(1+L) は相補感度です。どちらが測定されたバンプに対応するかは測定点とノイズ注入位置によります。</p><p class="note">G(s)=A/s、D(s)=e^(−sτ) の仮定は従来どおりです。今回のLoop Filterモデルは出力負荷を高インピーダンスとして扱っています。表示しているNyquistは正周波数側のみです。</p></section>
 <section style="margin-top:15px"><h2>実験・モデル照合の進め方（調整手順）</h2>
 <div class="grid">
-<section><h2>① まずロックの帯域を確認</h2><p>見る指標：<b>fc</b></p><p>ループフィルターのゲインを少しずつ調整し、どこまで速い周波数変動を抑えられるか確認する。ロック時・非ロック時の周波数ノイズPSDを比較し、抑圧が失われ始める周波数とモデルのfcを照合する。</p><p class="note">今回の暫定目標：fc ≈ 500 kHz。700〜800 kHzのサーボバンプより少し低い開始目標であり、実測で確定したUGFではない。</p></section>
+<section><h2>① まずロックの帯域を確認</h2><p>見る指標：<b>fc</b></p><p>ループフィルターのゲインを少しずつ調整し、どこまで速い周波数変動を抑えられるか確認する。ロック時・非ロック時の周波数ノイズPSDを比較し、抑圧が失われ始める周波数とモデルのfcを照合する。</p><p class="note">今回の暫定目標：fc ≈ 500 kHz。実測したサーボバンプのオフセット周波数約1 MHzより低い暫定開始目標であり、実測で確定したUGFではない。</p></section>
 <section><h2>② 安定性を確認</h2><p>見る指標：<b>PM・GM</b></p><p>帯域を広げた結果、発振しやすくなっていないかを確認する。PMは45〜60°を目標、30°未満は要注意。GMは6 dB以上、できれば10 dB以上を確保する。条件を満たさなければfcを上げず、ゲインや位相補償を見直す。</p></section>
 <section><h2>③ サーボバンプの原因を探す</h2><p>見る指標：<b>|S|・|T|</b></p><p>約1 MHz付近で、外乱抑圧が弱くなっているのか（|S|）、閉ループ応答が盛り上がっているのか（|T|）を調べる。実測スペクトルの測定点・ノイズ注入点に応じて、対応する伝達関数を比較する。</p><p class="note">M値は線形倍率。1.5は+3.52 dB、2は+6.02 dBに相当。ピーク周波数（Hz）そのものを1.5と比較しない。</p></section>
 </div>
@@ -287,19 +298,15 @@ function calculate(){
  const fcMarker=fcDisplay?{x:Math.log10(fcDisplay),y:interpAtLog(f,phase,fcDisplay)}:null;
  const fpcPhase=worstGM?.target??null;
  const logf=f.map(Math.log10),wt=warr.map(w=>w*tau),nr=L.map(z=>z[0]),ni=L.map(z=>z[1]),mx=Math.max(1,...nr.map(Math.abs),...ni.map(Math.abs));
- // Fast-path-only transfer: PI/Slow independent source set to zero (AC ground).
- // External Rload and RPIout are intentionally excluded from these two plots.
- const fastPath=warr.map(w=>{
-  const ZF=parallel([Rf,0],[0,-1/(w*C1)]);
-  const ZG=add([Rg,0],[0,-1/(w*C2)]);
-  const ZB=add(add([0,-1/(w*Cf)],[Rpost,0]),[Rs,0]);
-  const ZA=parallel(ZG,ZB);
-  return mul(div(ZA,add(ZF,ZA)),div([Rs,0],ZB));
- });
- const fastGainDb=fastPath.map(db),fastPhaseDeg=unwrap(fastPath.map(deg));
- const fastBandLo=v.bumpLo*1e3,fastBandHi=v.bumpHi*1e3,fastBandMid=Math.sqrt(fastBandLo*fastBandHi);
- const fastBandMidLog=Math.log10(fastBandMid);
- const fastBandMidIndex=Math.max(0,Math.min(f.length-1,Math.round((Math.log(fastBandMid/v.fmin)/Math.log(v.fmax/v.fmin))*(f.length-1))));
+ // PI Bode data based on the reference's basic PI equations.
+ // Phase follows Fig.11 convention and excludes the inverting amplifier's 180-degree sign.
+ const piCornerHz=v.pir2>0?1/(2*Math.PI*v.pir2*Cpi):null;
+ const piGainDb=warr.map(w=>20*Math.log10(Math.hypot(v.pir2,1/(w*Cpi))/Rpi));
+ const piPhaseDeg=warr.map(w=>-Math.atan2(1/(w*Cpi),v.pir2)*180/Math.PI);
+ const piCornerInRange=piCornerHz!==null&&piCornerHz>=v.fmin&&piCornerHz<=v.fmax;
+ $('piCorner').textContent=piCornerHz?fmt(piCornerHz,'Hz'):'R2=0のため定義なし';
+ $('piKp').textContent=(v.pir2/Rpi).toPrecision(5)+'（'+(20*Math.log10(Math.max(v.pir2/Rpi,1e-300))).toFixed(2)+' dB）';
+ $('piAtCorner').textContent=piCornerHz?'比例ゲイン比 +3.01 dB':'—';
 
  const near=L.filter(z=>Math.hypot(z[0],z[1])>0&&Math.hypot(z[0],z[1])<0.01),originLim=near.length?Math.max(1e-5,Math.max(...near.map(z=>Math.max(Math.abs(z[0]),Math.abs(z[1]))))*1.1):0.01;
  const gainMarkers=[],phaseMarkers=[],nyquistMarkers=[];
@@ -307,8 +314,9 @@ function calculate(){
  phaseCrossEvents.forEach((event,i)=>{const z=evaluate(2*Math.PI*event.fpc).L,gainAt=interpAtLog(f,gain,event.fpc);gainMarkers.push({x:Math.log10(event.fpc),y:gainAt,color:"#ffbc6b",label:"fpc"+(i+1),shape:"diamond"});phaseMarkers.push({x:Math.log10(event.fpc),y:event.target,color:"#ffbc6b",label:"fpc"+(i+1),shape:"diamond"});nyquistMarkers.push({x:z[0],y:z[1],color:"#ffbc6b",label:"fpc"+(i+1),shape:"diamond"});});
  const gainGMBrackets=worstGM?[{x:Math.log10(worstGM.fpc),y1:0,y2:worstGM.gainAt,label:"GM "+worstGM.gm.toFixed(2)+" dB",color:"#ffbc6b"}]:[];
  const phasePMBrackets=worstPM?[{x:Math.log10(worstPM.fc),y1:worstPM.target,y2:worstPM.phaseAt,label:"PM "+worstPM.pm.toFixed(2)+"°",color:"#5bd6ac"}]:[];
- draw('fastgain',logf,fastGainDb,{ylabel:'Fast経路ゲイン |H_F(jω)| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:"#e5ad55",label:"0 dB"}],xLines:[{x:Math.log10(fastBandLo),color:"#ffbc6b",label:"実測帯域下限"},{x:Math.log10(fastBandHi),color:"#ffbc6b",label:"実測帯域上限",labelOffset:14}],markers:[{x:fastBandMidLog,y:fastGainDb[fastBandMidIndex],color:"#ffbc6b",shape:"diamond",label:"実測中心"}]});
- draw('fastphase',logf,fastPhaseDeg,{ylabel:'Fast経路位相 ∠H_F(jω) [deg]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:"#e5ad55",label:"0°"}],xLines:[{x:Math.log10(fastBandLo),color:"#ffbc6b",label:"実測帯域下限"},{x:Math.log10(fastBandHi),color:"#ffbc6b",label:"実測帯域上限",labelOffset:14}],markers:[{x:fastBandMidLog,y:fastPhaseDeg[fastBandMidIndex],color:"#ffbc6b",shape:"diamond",label:"実測中心"}]});
+ const piCornerLines=piCornerInRange?[{x:Math.log10(piCornerHz),color:"#ffbc6b",label:"PIコーナー"}]:[];
+ draw('piGain',logf,piGainDb,{ylabel:'PIゲイン |G_PI(jω)| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:"#e5ad55",label:"0 dB"}],xLines:piCornerLines});
+ draw('piPhase',logf,piPhaseDeg,{ylabel:'PI位相 θ [deg]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:"#e5ad55",label:"0°"}],xLines:piCornerLines});
  draw('gain',logf,gain,{ylabel:'開ループゲイン |L(jω)| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:"#e5ad55",label:"0 dB"}],xLines:[...(fcDisplay?[{x:Math.log10(fcDisplay),color:"#5bd6ac",label:"fc"}]:[]),...(fpcDisplay?[{x:Math.log10(fpcDisplay),color:"#ffbc6b",label:"fpc",labelOffset:15}]:[])],markers:gainMarkers,verticalBrackets:gainGMBrackets});
  draw('phase',logf,phase,{ylabel:'開ループ位相 ∠L(jω) [deg]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[...(worstPM?[{y:worstPM.target,color:"#e5ad55",label:axisNumber(worstPM.target)+"°"}]:[])],xLines:[...(fcDisplay?[{x:Math.log10(fcDisplay),color:"#5bd6ac",label:"fc"}]:[]),...(fpcDisplay?[{x:Math.log10(fpcDisplay),color:"#ffbc6b",label:"fpc",labelOffset:15}]:[])],markers:phaseMarkers,verticalBrackets:phasePMBrackets});
  draw('delaymag',wt,wt.map(()=>0),{ylabel:'遅延振幅 |D(jω)| [dB]',xlabel:'正規化角周波数 ωτ [rad]',xmin:0,ymin:-1,ymax:1});
@@ -320,7 +328,7 @@ function calculate(){
  draw('sensitivity',logf,sDb,{ylabel:'感度 |S| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:'#e5ad55',label:'0 dB'}],xLines:[{x:Math.log10(bandLo),color:'#ffbc6b',label:'実測帯域下限'},{x:Math.log10(bandHi),color:'#ffbc6b',label:'実測帯域上限',labelOffset:14}],markers:sBand?[{x:Math.log10(sBand.f),y:sBand.db,color:'#ffbc6b',shape:'diamond',label:'band max'}]:[]});
  draw('complementary',logf,tDb,{ylabel:'相補感度 |T| [dB]',xlabel:'周波数 f [Hz]（対数目盛）',xTickMode:'decade',xTickSuffix:' Hz',yLines:[{y:0,color:'#e5ad55',label:'0 dB'}],xLines:[{x:Math.log10(bandLo),color:'#ffbc6b',label:'実測帯域下限'},{x:Math.log10(bandHi),color:'#ffbc6b',label:'実測帯域上限',labelOffset:14}],markers:tBand?[{x:Math.log10(tBand.f),y:tBand.db,color:'#ffbc6b',shape:'diamond',label:'band max'}]:[]});
  const allPM=pms.length?pms.map(p=>`${p.fc.toPrecision(5)} Hz : ${p.pm.toFixed(3)}°`).join('\n'):'なし';const allGM=gms.length?gms.map(g=>`${g.fpc.toPrecision(5)} Hz : ${g.gm.toFixed(3)} dB`).join('\n'):'なし';
- $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nPI model: ${piModel==='ic1'?'Step 2: IC1 input RC included':'Step 1: basic PI'}\nZfb(s) = R2_PI + 1/(s C_PI)\nYin(s) = 1/R1_PI ${piModel==='ic1'?'+ s Caux/(1+s Raux Caux)':''}\nC_PI,eff(s) = −Zfb(s) Yin(s)\nR1_PI=${Rpi} Ω, R2_PI=${v.pir2} Ω, C_PI=${Cpi} F\nAux branch: Raux=${Raux} Ω, Caux=${Caux} F\n\nS(s)=1/(1+L(s)); T(s)=L(s)/(1+L(s))\nBeat carrier = ${v.beatCarrier} MHz (lock setpoint); plotted f is modulation/offset frequency around the lock point.\nMeasured bump comparison band: ${bandLo}–${bandHi} Hz\nFast-path-only H_F(s): PI Slow source = 0 V (AC GND), external Rload and RPIout excluded\nZC1(s)=1/(s C1), ZRF=RF || ZC1\nZC2(s)=1/(s C2), Zshunt=RG+ZC2 (series branch to GND)\nZC(s)=1/(s CF), Rslow=RS+RPIout\nZoutFast=Rload || Rslow\nZbranch=ZC+Rpost+ZoutFast\nZeq=Zshunt || Zbranch\nF_F(s)=[Zeq/(ZRF+Zeq)] [ZoutFast/Zbranch]\nZA=ZRF || Zshunt, ZbranchSlow=ZC+Rpost+ZA\nZload=Rload || ZbranchSlow\nC1=${C1} F (${v.lfC1} pF), C2=${C2} F (${v.lfC2} µF)\nRpost=${Rpost} Ω\nF_S(s)=Zload/(Rslow+Zload)\nRload=${RL} Ω, RPIout=${RpiOut} Ω\nC_eq(s)=F_F(s)+F_S(s) C_PI,eff(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n表示中のマーカー：緑=PMが最小のゲイン交差点 fc、橙=GMが最小の位相交差点 fpc。\n\n※追加ループ極性は、正のkφ・KFMとPI反転を明示したうえでのモデル上の符号です。実機の負帰還方向は小さな試験信号で確認してください。Loop Filterはユーザー説明に基づく受動RCネットワーク。出力負荷は高インピーダンスと仮定。負荷が有限なら、そのインピーダンスを追加してください。`;
+ $('equations').textContent=`A = 2π KFM kφ/(Rs+rd) = ${A.toExponential(6)}\nG(s) = A/s\nD(s) = exp(−sτ), τ = ${tau.toExponential(4)} s\n\nPI model: ${piModel==='ic1'?'Step 2: IC1 input RC included':'Step 1: basic PI'}\nZfb(s) = R2_PI + 1/(s C_PI)\nYin(s) = 1/R1_PI ${piModel==='ic1'?'+ s Caux/(1+s Raux Caux)':''}\nC_PI,eff(s) = −Zfb(s) Yin(s)\nR1_PI=${Rpi} Ω, R2_PI=${v.pir2} Ω, C_PI=${Cpi} F\nAux branch: Raux=${Raux} Ω, Caux=${Caux} F\n\nS(s)=1/(1+L(s)); T(s)=L(s)/(1+L(s))\nBeat carrier = ${v.beatCarrier} MHz (lock setpoint); plotted f is modulation/offset frequency around the lock point.\nMeasured bump comparison band: ${bandLo}–${bandHi} Hz\nZC1(s)=1/(s C1), ZRF=RF || ZC1\nZC2(s)=1/(s C2), Zshunt=RG+ZC2 (series branch to GND)\nZC(s)=1/(s CF), Rslow=RS+RPIout\nZoutFast=Rload || Rslow\nZbranch=ZC+Rpost+ZoutFast\nZeq=Zshunt || Zbranch\nF_F(s)=[Zeq/(ZRF+Zeq)] [ZoutFast/Zbranch]\nZA=ZRF || Zshunt, ZbranchSlow=ZC+Rpost+ZA\nZload=Rload || ZbranchSlow\nC1=${C1} F (${v.lfC1} pF), C2=${C2} F (${v.lfC2} µF)\nRpost=${Rpost} Ω\nF_S(s)=Zload/(Rslow+Zload)\nRload=${RL} Ω, RPIout=${RpiOut} Ω\nC_eq(s)=F_F(s)+F_S(s) C_PI,eff(s)\nL(s) = polarity × G(s) × C_eq(s) × D(s)\n\nGain crossoverごとのPM:\n${allPM}\nPhase crossoverごとのGM:\n${allGM}\n\n表示中のマーカー：緑=PMが最小のゲイン交差点 fc、橙=GMが最小の位相交差点 fpc。\n\n※追加ループ極性は、正のkφ・KFMとPI反転を明示したうえでのモデル上の符号です。実機の負帰還方向は小さな試験信号で確認してください。Loop Filterはユーザー説明に基づく受動RCネットワーク。出力負荷は高インピーダンスと仮定。負荷が有限なら、そのインピーダンスを追加してください。`;
 }
 function syncSliders(){ $('lfr1Number').value=String(Number($('lfr1').value)); $('lfPostNumber').value=String(Number($('lfPost').value)); }
 const bestProfileKey='laserFrequencyLockAnalyzer.bestProfile.v1';
